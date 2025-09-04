@@ -1,0 +1,65 @@
+このプロジェクトをセットアップするにあたり必要な環境変数の取得方法について教えてください。
+ChatGPT:
+
+了解です。では、Supabase認証・DB・Storage、Stripe、OpenAI/Claude/Geminiなどを含めたモノレポプロジェクトで必要な環境変数の 取得方法・入手元 を整理して説明します。
+
+1. Supabase関連
+環境変数	入手方法・説明
+NEXT_PUBLIC_SUPABASE_URL	Supabase プロジェクト作成後、[プロジェクト設定 → API] で「URL」をコピー
+NEXT_PUBLIC_SUPABASE_ANON_KEY	同上、API設定で「anon/public key」をコピー。フロント用。
+SUPABASE_SERVICE_ROLE_KEY	API設定で「service role key」をコピー。サーバー側専用。
+SUPABASE_DATABASE_URL	[プロジェクト設定 → Database] の接続情報から生成 (例: postgresql://user:password@host:port/db)
+NEXT_PUBLIC_SUPABASE_STORAGE_URL	[Supabase URL]/storage/v1 形式。Storage利用時に必要
+NEXT_PUBLIC_SUPABASE_REALTIME_URL	[Supabase URL]/realtime/v1 形式。リアルタイム機能利用時
+補足
+
+NEXT_PUBLIC_付きはフロントから使用可能
+
+サーバー専用キー（service role, DB URL）は絶対にフロントに出さない
+
+2. Stripe関連
+環境変数	入手方法・説明
+STRIPE_SECRET_KEY	[Stripeダッシュボード → Developers → API keys] で Secret Key を取得
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY	同上で Publishable Key を取得（フロント用）
+STRIPE_WEBHOOK_SECRET	[Stripeダッシュボード → Developers → Webhooks] 作成したWebhookの「Signing secret」をコピー
+STRIPE_PRODUCT_* / STRIPE_PRICE_*	[Products & Prices] で作成した商品ID・価格IDをコピー（無料プラン/有料プラン/トライアルなど）
+3. AIサービス
+環境変数	入手方法・説明
+OPENAI_API_KEY	[OpenAIアカウント → API Keys] で新規キーを発行
+CLAUDE_API_KEY	[Anthropicアカウント → API Keys] で取得
+GEMINI_API_KEY	Google Gemini (ベータ/提供状況による) で取得
+補足
+
+サーバーサイドでのみ使用する
+
+プロジェクトによってはどれか1つだけでもOK
+
+4. NextAuth / 共通
+環境変数	入手方法・説明
+NEXTAUTH_SECRET	任意の長いランダム文字列を生成（Node.js: require('crypto').randomBytes(32).toString('hex') など）
+NODE_ENV	development / production など、環境に応じて設定
+5. 実際の手順例
+
+Supabaseでプロジェクト作成 → URL・APIキー・DB接続情報取得
+
+Stripeで商品・価格作成 → Secret / Publishable Key取得
+
+Stripe Webhook作成 → Webhook Secret取得
+
+OpenAI/Claude/Geminiアカウント作成 → APIキー取得
+
+NextAuth用にシークレット生成
+
+.env.local に取得した値をコピー
+
+cp .env.sample .env.local
+# その後、各キーを .env.local に上書き
+
+
+💡 ポイント
+
+.env.sample は ダミー値 にしてチームで共有
+
+.env.local に 実際の値 を入れて環境ごとに管理
+
+フロント用キーは NEXT_PUBLIC_、サーバー専用はそれ以外で分ける
