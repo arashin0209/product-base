@@ -6,18 +6,33 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
-    "format": "prettier -w ."
+    "format": "prettier -w .",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/infrastructure/database/seed.ts"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.8",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/node": "^20.11.30",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@vitest/ui": "^2.0.5",
+    "drizzle-kit": "^0.24.0",
     "eslint": "^9.7.0",
+    "jsdom": "^24.1.1",
+    "msw": "^2.3.4",
     "prettier": "^3.3.3",
+    "tsx": "^4.16.2",
     "turbo": "^2.0.3",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
   }
 }
-

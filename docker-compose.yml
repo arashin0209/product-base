@@ -1,0 +1,30 @@
+# docker-compose.yml
+# ローカル開発用（テスト環境のSupabaseに接続）
+
+services:
+  app:
+    image: node:18-alpine
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - .env.local
+    volumes:
+      - .:/app
+      - /app/node_modules
+    working_dir: /app
+    depends_on:
+      - redis
+    # モノレポ対応のdev コマンド
+    command: sh -c "corepack enable pnpm && pnpm install && pnpm turbo dev"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

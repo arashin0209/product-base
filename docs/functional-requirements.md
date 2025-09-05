@@ -538,3 +538,50 @@ const UserFeatures = ({ userPlan }: { userPlan: string }) => {
 - **開発環境**: ローカル Docker + テスト環境Supabase DB
 - **テスト環境**: Vercel Preview + テスト環境Supabase DB  
 - **本番環境**: Vercel Production + 本番環境Supabase DB
+
+## 14. 実装時の重要な考慮事項
+
+### 14.1 モノレポ構成での開発上の注意点
+
+#### TypeScriptパス設定の制限
+```typescript
+// ⚠️ 注意: Next.js App Router ではパスエイリアス(@/)が一部で動作しない
+// APIエンドポイントとサービスクラスでは相対パス推奨
+
+// APIエンドポイント例 (/apps/web/app/api/plans/route.ts)
+import { PlanService } from '../../../../../../src/application/plan/plan.service'
+
+// サービスクラス例 (/src/application/plan/plan.service.ts)  
+import { db } from '../../infrastructure/database/connection'
+```
+
+#### 開発サーバー運用のベストプラクティス
+- **パス変更後**: 必ず開発サーバー再起動
+- **データベース変更後**: マイグレーション + シードデータ確認
+- **環境変数変更後**: `.env.local`確認 + サーバー再起動
+
+### 14.2 既存システム統合時の考慮事項
+
+#### Supabase Auth テーブルとの併用
+```sql
+-- 既存: auth.users テーブル活用
+-- 新規: 正規化されたテーブル追加（features, plan_features等）
+-- 結合: SQLクエリでauth.usersと新テーブルを連携
+```
+
+#### データマイグレーション戦略
+1. **Phase 1**: 新テーブル作成（既存システム影響なし）
+2. **Phase 2**: サービスクラス統合（既存構造対応）  
+3. **Phase 3**: APIエンドポイント段階移行
+4. **Phase 4**: フロントエンド新機能追加
+
+### 14.3 トラブルシューティング時の対応方針
+
+#### 優先順位付きチェックリスト
+1. **環境変数**: `.env.local`の設定確認
+2. **データベース**: テーブル存在 + シードデータ確認  
+3. **パス解決**: インポートパス + 開発サーバー再起動
+4. **制約設定**: 主キー・外部キー制約の確認
+5. **権限設定**: Supabase RLS + API認証確認
+
+このようにして、段階的かつ安全に機能拡張を行うことで、既存システムの安定性を保ちつつ新機能を追加できます。

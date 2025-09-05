@@ -106,3 +106,5 @@ temp/
 
 # Drizzle
 drizzle/
+
+.pnpm-store/

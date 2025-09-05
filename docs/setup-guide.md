@@ -47,7 +47,8 @@ cp env.sample .env.local
 | `NEXT_PUBLIC_SUPABASE_URL` | SupabaseプロジェクトのURL | Supabaseダッシュボード |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabaseの匿名キー（フロント用） | Supabaseダッシュボード |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabaseのサービスロールキー（サーバー用） | Supabaseダッシュボード |
-| `SUPABASE_DATABASE_URL` | Supabaseデータベース接続URL | Supabaseダッシュボード |
+| `SUPABASE_DATABASE_URL` | Supabaseデータベース接続URL（Transaction Pooler） | Supabaseダッシュボード |
+| `SUPABASE_DIRECT_URL` | Supabaseデータベース直接接続URL（マイグレーション用） | Supabaseダッシュボード |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripeの公開キー | Stripeダッシュボード |
 | `STRIPE_SECRET_KEY` | Stripeの秘密キー | Stripeダッシュボード |
 | `STRIPE_WEBHOOK_SECRET` | StripeのWebhookシークレット | Stripeダッシュボード |
@@ -278,6 +279,27 @@ Dockerを使用する場合は、以下のファイルをプロジェクトル�
 
 #### 3.1 Supabase設定
 
+**⚠️ 重要: Supabase接続の使い分け**
+
+Supabaseでは用途に応じて異なる接続方法を使用します：
+
+- **アプリケーション実行時**: Transaction Pooler (ポート6543)
+- **マイグレーション・管理作業**: Direct Connection (ポート5432)
+
+| 接続タイプ | ポート | 用途 | 特徴 |
+|-----------|--------|------|------|
+| Transaction Pooler | 6543 | アプリケーション実行 | 高速、接続プール、一部制限あり |
+| Direct Connection | 5432 | マイグレーション・管理 | フル機能、DDL可能、接続数制限 |
+
+**環境変数の設定例:**
+```env
+# アプリケーション用 (Transaction Pooler)
+SUPABASE_DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:6543/postgres?pgbouncer=true
+
+# マイグレーション・管理用 (Direct Connection) 
+SUPABASE_DIRECT_URL=postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres
+```
+
 1. **Supabaseプロジェクトの作成**
    ```bash
    # PlaywrightMCPを使用してSupabaseにアクセス
@@ -316,15 +338,29 @@ Dockerを使用する場合は、以下のファイルをプロジェクトル�
    ```
 
 3. **データベース接続情報の取得**
+   
+   **3.1 Transaction Pooler接続（アプリケーション用）**
    ```bash
    # Database → Connection Pooling に移動
    npx playwright-mcp browser click --element "Database" --ref "database-menu"
    npx playwright-mcp browser click --element "Connection Pooling" --ref "connection-pooling"
    
-   # 接続文字列を取得
-   npx playwright-mcp browser evaluate --function "() => document.querySelector('[data-testid=connection-string]').textContent"
+   # Transaction pooling接続文字列を取得（ポート6543）
+   npx playwright-mcp browser evaluate --function "() => document.querySelector('[data-testid=pooler-connection-string]').textContent"
    # 取得した接続文字列をSUPABASE_DATABASE_URLに設定
-   # 形式: postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres
+   # 形式: postgresql://postgres:[PASSWORD]@[HOST]:6543/postgres?pgbouncer=true
+   ```
+   
+   **3.2 Direct Connection（マイグレーション用）**
+   ```bash
+   # Database → Settings に移動
+   npx playwright-mcp browser click --element "Database" --ref "database-menu"
+   npx playwright-mcp browser click --element "Settings" --ref "database-settings"
+   
+   # Direct connection文字列を取得（ポート5432）
+   npx playwright-mcp browser evaluate --function "() => document.querySelector('[data-testid=direct-connection-string]').textContent"
+   # 取得した接続文字列をSUPABASE_DIRECT_URLに設定
+   # 形式: postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres
    ```
 
 4. **Google認証の設定**
@@ -783,6 +819,85 @@ curl -X POST http://localhost:3000/api/ai/openai \
       };
     }"
     ```
+
+## 現在のデータベーススキーマ構成
+
+### 既存テーブル (Supabase auth スキーマ)
+- `auth.users` - Supabase認証ユーザー情報
+  - 既存カラム: `plan_type` (varchar, default 'free'), `stripe_customer_id` (varchar)
+
+### 追加テーブル (public スキーマ)
+- `plans` - サブスクリプションプラン情報
+- `features` - 機能マスタ  
+- `plan_features` - プランと機能の関連 (多対多)
+- `user_subscriptions` - ユーザーのサブスクリプション履歴
+- `ai_usage_logs` - AI使用履歴ログ
+
+### 外部キー関係
+- `user_subscriptions.user_id` → `auth.users.id`
+- `ai_usage_logs.user_id` → `auth.users.id`
+- `plan_features.plan_id` → `plans.id`
+- `plan_features.feature_id` → `features.id`
+
+### データベース設計上の重要な教訓
+
+#### 1. 既存テーブル構造の確認の重要性
+- **問題**: 新しいスキーマ設計と既存テーブル構造の不一致
+- **発生箇所**: `auth.users`テーブルには既に`plan_type`, `stripe_customer_id`カラムが存在
+- **解決策**: `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'users'` で構造確認
+- **教訓**: Drizzleマイグレーション実行前に、必ず既存のテーブル構造を確認する
+
+#### 2. TypeScript target環境の設定
+- **問題**: `drizzle-kit generate`実行時のesbuild変換エラー
+- **エラー**: `Transforming const to the configured target environment ("es5") is not supported yet`
+- **解決策**: `tsconfig.json`の`target`を`"es5"`から`"es2017"`に変更
+- **教訓**: Drizzleツールは最新のJS機能を使用するため、適切なtargetが必要
+
+#### 3. 主キー制約とON CONFLICT構文
+- **問題**: `plan_features`テーブルで`ON CONFLICT`エラー
+- **エラー**: `there is no unique or exclusion constraint matching the ON CONFLICT specification`
+- **解決策**: `ALTER TABLE plan_features ADD PRIMARY KEY (plan_id, feature_id)`で複合主キーを追加
+- **教訓**: ON CONFLICTを使用する前に、該当テーブルに適切な制約が設定されているか確認
+
+#### 4. 重複データ投入の回避
+- **問題**: シードデータの重複投入エラー
+- **エラー**: `duplicate key value violates unique constraint "features_pkey"`
+- **解決策**: `INSERT`前に既存データ確認、または`ON CONFLICT DO NOTHING`使用
+- **教訓**: シードスクリプトは冪等性を保つよう設計する
+
+#### 5. Supabase接続URL設定
+- **問題**: シードスクリプトでの接続エラー（ECONNREFUSED ::1:5432）
+- **原因**: `SUPABASE_DIRECT_URL`の設定不備またはローカルPostgreSQL参照
+- **解決策**: 環境変数でSupabaseの直接接続URLを正しく設定
+- **教訓**: Supabaseでは用途別に接続URLを使い分ける（Transaction Pooler vs Direct Connection）
+
+#### 6. SQL実行時の構文エラー対応
+- **問題**: `\d`コマンドがSQL Editorで使用不可
+- **エラー**: `syntax error at or near "\"`
+- **解決策**: `information_schema.columns`を使ったSQLクエリで代替
+- **教訓**: psqlクライアント固有のコマンドとSQL文を区別して使用
+
+#### 7. Next.js モノレポ構成でのパス解決問題
+- **問題**: APIエンドポイントで相対深度が異なることによるインポートエラー
+- **エラー**: `Module not found: Can't resolve '@/src/infrastructure/database/connection'`
+- **発生箇所**: 
+  - `/apps/web/app/api/plans/route.ts` - 7層深い相対パス
+  - `/apps/web/app/api/users/me/plan/route.ts` - 9層深い相対パス
+- **解決策**: 各APIエンドポイントで正確な相対パスを計算して使用
+- **教訓**: モノレポ構成では`@/`エイリアスが効かない場合があり、相対パスが確実
+
+#### 8. サービスクラス内でのパス解決問題
+- **問題**: サービスクラス内で`@/`エイリアス参照が解決されない
+- **エラー**: `Module not found: Can't resolve '@/src/infrastructure/database/connection'`
+- **解決策**: サービスクラス内でも相対パス（`../../`）を使用
+- **教訓**: 
+  - TypeScript のパスマッピングとNext.js実行時の解決は異なる
+  - サービス層では相対パスを使用するのが安全
+
+#### 9. 開発サーバーキャッシュ問題
+- **問題**: ファイル変更後も古いインポートエラーが表示継続
+- **解決策**: 開発サーバーの再起動（`pnpm dev`停止→再実行）
+- **教訓**: パス変更時は開発サーバー再起動で確実にキャッシュクリア
 
 ### 5. データベースのセットアップ
 
