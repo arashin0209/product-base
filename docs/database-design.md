@@ -127,6 +127,11 @@ Supabaseが自動生成・管理する認証用テーブル。直接操作は行
 | created_at | timestamptz | NOT NULL | CURRENT_TIMESTAMP | 作成日時 |
 | updated_at | timestamptz | NOT NULL | CURRENT_TIMESTAMP | 更新日時 |
 
+**⚠️ 重要な実装上の注意:**
+- **Supabase認証連携**: usersテーブルのidは必ずauth.users.idと同じ値を使用すること
+- **新規登録時**: API呼び出し時に`userId`パラメータが必須
+- **制約違反エラー**: idがnullの場合、23502エラー（null value in column "id" violates not-null constraint）が発生
+
 ```sql
 -- インデックス
 CREATE INDEX idx_users_plan_id ON users(plan_id);
@@ -525,3 +530,58 @@ VACUUM ANALYZE ai_usage_logs;
 - ディスク使用量 > 80%
 - 平均クエリ実行時間 > 1秒
 - 同時接続数 > 上限の80%
+
+## 10. 実装上のトラブルシューティング
+
+### 10.1 よくある問題と解決策
+
+#### 新規登録時の「null value in column "id"」エラー
+```
+Database error: {
+  code: '23502',
+  details: 'Failing row contains (null, test@example.com, Test User, free, ...)',
+  message: 'null value in column "id" of relation "users" violates not-null constraint'
+}
+```
+
+**原因:**
+- auth.users.idを users.id として設定していない
+- API呼び出し時に `userId` パラメータが未設定
+
+**解決策:**
+1. 認証成功後に `data.user.id` を確実に取得
+2. API呼び出し時に `userId: data.user.id` を含める
+3. users テーブル作成は認証完了後に実行
+
+**実装例:**
+```typescript
+// 正しい実装パターン
+const { data, error } = await supabase.auth.signUp({email, password});
+if (data.user) {
+  await fetch('/api/users', {
+    method: 'POST',
+    body: JSON.stringify({
+      userId: data.user.id, // ← 必須
+      email: data.user.email,
+      name: userName
+    })
+  });
+}
+```
+
+#### 外部キー制約違反
+**症状:** `Failing row contains (null, email, name, ...)`  
+**対処:** 認証フロー完了後にusers テーブル作成を実行すること
+
+### 10.2 データ整合性チェッククエリ
+```sql
+-- ユーザーテーブルとauth.usersの整合性確認
+SELECT 
+    u.id, 
+    u.name,
+    au.email,
+    CASE WHEN au.id IS NULL THEN 'MISSING_AUTH_USER' ELSE 'OK' END as status
+FROM users u 
+LEFT JOIN auth.users au ON u.id = au.id
+WHERE au.id IS NULL;
+```

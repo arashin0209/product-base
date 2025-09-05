@@ -1138,6 +1138,7 @@ docker-compose down -v
    - `.env.local`ファイルが正しく作成されているか確認
    - アプリケーションを再起動
    - Docker環境では`docker-compose down && docker-compose up --build`で再起動
+   - **重要**: Next.jsでは `.env.local` が最優先される
 
 2. **Supabase接続エラー**
    - 環境変数の値が正しいか確認
@@ -1150,6 +1151,61 @@ docker-compose down -v
 4. **OpenAI接続エラー**
    - APIキーが有効か確認
    - レート制限に達していないか確認
+
+#### 7.2 認証・ユーザー管理関連のトラブル
+
+##### 新規登録時のデータベースエラー
+
+**症状:**
+```
+Database error: {
+  code: '23502',
+  message: 'null value in column "id" of relation "users" violates not-null constraint'
+}
+```
+
+**原因:**
+- Supabase認証成功後のユーザーレコード作成でuserIdが未設定
+
+**解決手順:**
+1. **認証フロー確認**
+   ```typescript
+   const { data, error } = await supabase.auth.signUp({email, password});
+   // data.user.id を確実に取得できているか確認
+   ```
+
+2. **API呼び出し修正**
+   ```typescript
+   const response = await fetch('/api/users', {
+     method: 'POST',
+     body: JSON.stringify({
+       userId: data.user.id, // ← この行が必須
+       email, name
+     })
+   });
+   ```
+
+3. **動作確認**
+   ```bash
+   # 手動テスト
+   curl -X POST http://localhost:3000/api/users \
+     -H "Content-Type: application/json" \
+     -d '{"userId":"valid-uuid","email":"test@example.com","name":"Test"}'
+   ```
+
+**成功時のレスポンス例:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "test@example.com", 
+    "name": "Test User",
+    "planType": "free",
+    "createdAt": "2025-09-04T10:14:53.869244+00:00"
+  }
+}
+```
 
 5. **Docker関連の問題**
    - **コンテナが起動しない**
