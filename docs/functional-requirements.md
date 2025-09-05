@@ -13,7 +13,63 @@ Product Baseは、Next.js、Supabase、Stripe、AIサービス（OpenAI/Claude/G
 - **決済**: Stripe Billing Portal
 - **生成AI**: OpenAI
 - **デザインシステム**: DDD（ドメイン駆動設計）
+- **構成**: モノレポ（pnpm + turbo）
 - **デプロイ**: Vercel
+
+### 1.2 モノレポ構成とAPI処理フロー
+
+#### プロジェクト構成
+```
+/apps/web              # Next.js アプリ（フロント+API）
+  /app/api            # Vercel サーバーレス関数（API エンドポイント）
+/src                   # DDD層（ビジネスロジック）
+  /domain             # ドメインモデル
+  /application        # ユースケース
+  /infrastructure     # 外部サービス連携
+/packages/ui           # Shadcn UI 共通コンポーネント
+/packages/shared-utils # 共通ユーティリティ
+```
+
+#### API処理フロー
+```
+1. リクエスト受信    /apps/web/app/api/users/route.ts
+         ↓          (薄いAPI層: バリデーション・認証)
+2. ビジネスロジック  /src/application/user/user.service.ts  
+         ↓          (ユースケース・プラン制御・業務処理)
+3. 外部サービス連携  /src/infrastructure/supabase/user.repository.ts
+         ↓          (Supabase/Stripe/OpenAI 呼び出し)
+4. レスポンス返却    /apps/web/app/api/users/route.ts
+```
+
+#### 実装例
+```typescript
+// API層（薄い受け口）
+// /apps/web/app/api/users/route.ts
+import { userService } from '@/src/application/user/user.service'
+
+export async function POST(request: Request) {
+  const body = await request.json()
+  const result = await userService.createUser(body)
+  return Response.json(result)
+}
+
+// アプリケーション層（ユースケース）
+// /src/application/user/user.service.ts
+export class UserService {
+  async createUser(userData) {
+    const user = new User(userData)
+    return await this.userRepository.save(user)
+  }
+}
+
+// インフラ層（外部連携）
+// /src/infrastructure/supabase/user.repository.ts
+export class UserRepository {
+  async save(user) {
+    return await supabase.from('users').insert(user)
+  }
+}
+```
 
 ## 2. 認証機能
 
@@ -39,11 +95,24 @@ Product Baseは、Next.js、Supabase、Stripe、AIサービス（OpenAI/Claude/G
    - 認証成功後、ダッシュボードにリダイレクト
 
 3. **Google OAuth**
-   - Googleアカウントによる認証
+   - **Supabase Auth の Google Provider を使用**
+   - Google Cloud Console で OAuth 2.0 クライアント設定
+   - Supabase ダッシュボードの Authentication > Providers でGoogle設定
+   - フロントエンド: `supabase.auth.signInWithOAuth({ provider: 'google' })` 
    - 初回ログイン時にユーザーレコード自動作成
    - 既存ユーザーは既存レコードと連携
+   - **環境変数でのGoogle認証情報管理は不要**（Supabase側で管理）
 
-### 2.2 セキュリティ要件
+### 2.2 認証実装詳細
+- **Supabase Auth を認証基盤として使用**
+- **認証方式**: Email/Password + Google OAuth
+- **セッション管理**: Supabase JWT による自動管理
+- **ユーザー管理**: 
+  - Supabase `auth.users` テーブル（認証情報）
+  - アプリケーション `users` テーブル（プロフィール情報）
+  - 両テーブルは `users.id = auth.users.id` で連携
+
+### 2.3 セキュリティ要件
 - パスワードの暗号化（Supabase標準）
 - Supabaseによるセッション管理（JWT標準）
 - CSRF/XSS対策
@@ -383,11 +452,15 @@ const UserFeatures = ({ userPlan }: { userPlan: string }) => {
 
 ## 8. API仕様
 
-### 8.1 認証API
-- `POST /api/auth/login` - ログイン
-- `POST /api/auth/signup` - 新規登録
-- `POST /api/auth/logout` - ログアウト
-- `GET /api/auth/callback` - OAuth コールバック
+### 8.1 認証API（Supabase Auth 使用）
+- **Supabase クライアント経由で認証処理**:
+  - `supabase.auth.signUp()` - 新規登録
+  - `supabase.auth.signInWithPassword()` - Email/Password ログイン  
+  - `supabase.auth.signInWithOAuth({ provider: 'google' })` - Google OAuth
+  - `supabase.auth.signOut()` - ログアウト
+- **カスタム API**:
+  - `GET /api/auth/callback` - OAuth コールバック（リダイレクト処理）
+  - `POST /api/auth/sync-user` - ユーザープロフィール同期
 
 ### 8.2 ユーザーAPI
 - `GET /api/users/me` - 現在のユーザー情報取得
@@ -455,11 +528,13 @@ const UserFeatures = ({ userPlan }: { userPlan: string }) => {
 ## 13. リリース・デプロイメント
 
 ### 13.1 CI/CD要件
-- GitHub Actions による自動テスト
-- Vercel による自動デプロイ
-- データベースマイグレーションの自動化
+- **GitHub Actions**: 自動テスト・コード品質チェック
+- **Vercel GitHub連携**: 自動デプロイ
+  - Pull Request作成・更新 → プレビューデプロイ（テスト環境）
+  - main ブランチへのpush → 本番デプロイ
+- **データベースマイグレーション**: Supabase Migration（手動実行）
 
 ### 13.2 環境管理
-- 開発環境（ローカル）
-- ステージング環境（Vercel Preview）
-- 本番環境（Vercel Production）
+- **開発環境**: ローカル Docker + テスト環境Supabase DB
+- **テスト環境**: Vercel Preview + テスト環境Supabase DB  
+- **本番環境**: Vercel Production + 本番環境Supabase DB

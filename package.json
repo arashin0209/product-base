@@ -1,0 +1,23 @@
+{
+  "name": "product-base",
+  "private": true,
+  "packageManager": "pnpm@9.6.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "format": "prettier -w ."
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "eslint": "^9.7.0",
+    "prettier": "^3.3.3",
+    "turbo": "^2.0.3",
+    "typescript": "^5.4.5"
+  }
+}
+
