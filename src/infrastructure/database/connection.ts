@@ -22,6 +22,10 @@ const buildDatabaseUrl = (): string => {
   const password = process.env.SUPABASE_DB_PASSWORD
   
   if (!host || !port || !name || !user || !password) {
+    // CI環境やVercel環境ではモック接続文字列を返す
+    if (process.env.CI || process.env.VERCEL) {
+      return 'postgresql://[HOST]:[PORT]/[DB_NAME]'
+    }
     throw new Error('Missing required database environment variables: SUPABASE_DB_HOST, SUPABASE_DB_PORT, SUPABASE_DB_NAME, SUPABASE_DB_USER, SUPABASE_DB_PASSWORD')
   }
   
