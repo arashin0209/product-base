@@ -272,13 +272,13 @@ Dockerを使用する場合は、以下のファイルをプロジェクトル�
 
 Supabaseでは用途に応じて異なる接続方法を使用します：
 
-- **アプリケーション実行時**: Transaction Pooler (ポート6543)
-- **マイグレーション・管理作業**: Direct Connection (ポート5432)
+- **アプリケーション実行時**: Transaction Pooler (ポート${SUPABASE_DB_PORT:-6543})
+- **マイグレーション・管理作業**: Direct Connection (ポート${SUPABASE_DB_PORT:-5432})
 
 | 接続タイプ | ポート | 用途 | 特徴 |
 |-----------|--------|------|------|
-| Transaction Pooler | 6543 | アプリケーション実行 | 高速、接続プール、一部制限あり |
-| Direct Connection | 5432 | マイグレーション・管理 | フル機能、DDL可能、接続数制限 |
+| Transaction Pooler | ${SUPABASE_DB_PORT:-6543} | アプリケーション実行 | 高速、接続プール、一部制限あり |
+| Direct Connection | ${SUPABASE_DB_PORT:-5432} | マイグレーション・管理 | フル機能、DDL可能、接続数制限 |
 
 **環境変数の設定例:**
 ```env
@@ -1379,9 +1379,64 @@ Database error: {
      chmod 755 .
      ```
 
-#### 7.2 ログの確認
+#### 7.2 データベース接続問題の教訓（重要）
 
-##### 7.2.1 Docker環境でのログ確認
+##### 7.2.1 今回発生した問題の詳細
+
+**問題の概要:**
+- アプリケーションがSupabaseデータベースに接続できず、`CONNECT_TIMEOUT`エラーが発生
+- プラン一覧の取得、AIチャットのデータベースログ記録、ユーザー登録など、データベースを使用する全ての機能が動作しない状態
+
+**具体的な症状:**
+```
+Error: write CONNECT_TIMEOUT tukewqgimkyujtgwenuk.supabase.co:6543
+Error: password authentication failed for user "postgres"
+```
+
+**根本原因:**
+1. **間違った接続URL形式**: `SUPABASE_DATABASE_URL`が古い形式で設定されていた
+   - 間違い: `postgresql://postgres:password@tukewqgimkyujtgwenuk.supabase.co:6543/postgres`
+   - 正解: `postgresql://postgres.tukewqgimkyujtgwenuk:password@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres`
+
+2. **ユーザー名の形式違い**: SupabaseのTransaction Poolerでは`postgres.{project_ref}`形式が必要
+3. **ホスト名の違い**: `{project_ref}.supabase.co`ではなく`aws-1-ap-southeast-1.pooler.supabase.com`を使用
+
+**なぜ気づけなかったか:**
+1. **環境変数の値が存在していた**: `SUPABASE_DATABASE_URL`に値が設定されていたため、設定漏れではないと判断
+2. **認証は動作していた**: Supabase Auth（ポート443）は正常に動作していたため、Supabase接続自体は問題ないと誤認
+3. **エラーメッセージの誤解釈**: `CONNECT_TIMEOUT`をネットワーク問題と判断し、接続URL形式の問題と気づかなかった
+4. **段階的調査の不足**: 低レイヤー（psql直接接続）から調査すべきところを、API層から調査していた
+
+**なぜ最終的に気づいたか:**
+1. **Supabase公式ドキュメントの確認**: Transaction Poolerの正しい接続形式を確認
+2. **直接接続テストの実行**: `psql`や`postgres`クライアントでの直接接続テストで具体的なエラーメッセージを取得
+3. **パスワードリセット後の再確認**: パスワード認証エラーが発生したことで、接続URL形式の問題に気づいた
+
+**教訓:**
+1. **公式ドキュメントの重要性**: 環境変数の設定は必ず公式ドキュメントで最新の形式を確認する
+2. **低レイヤーからの調査**: データベース接続問題は`psql`直接接続から調査する
+3. **接続方式の理解**: Supabaseでは用途別に異なる接続方式（Transaction Pooler vs Direct Connection）がある
+4. **エラーメッセージの詳細分析**: `CONNECT_TIMEOUT`でも接続URL形式の問題の可能性を考慮する
+
+**正しい接続URL形式:**
+```env
+# Transaction Pooler (アプリケーション用) - 推奨
+SUPABASE_DATABASE_URL=postgresql://postgres.{PROJECT_REF}:{PASSWORD}@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
+
+# Direct Connection (マイグレーション用)
+SUPABASE_DIRECT_URL=postgresql://postgres:{PASSWORD}@db.{PROJECT_REF}.supabase.co:5432/postgres
+```
+
+**トラブルシューティング手順:**
+1. 環境変数の存在確認: `echo $SUPABASE_DATABASE_URL`
+2. 直接接続テスト: `psql $SUPABASE_DATABASE_URL`
+3. 公式ドキュメントで接続形式確認
+4. 接続URL形式の修正
+5. アプリケーション再起動
+
+#### 7.3 ログの確認
+
+##### 7.3.1 Docker環境でのログ確認
 
 ```bash
 # 全サービスのログを確認
@@ -1399,7 +1454,7 @@ docker-compose logs -f app
 docker-compose logs --tail=100 app
 ```
 
-##### 7.2.2 ローカル環境でのログ確認
+##### 7.3.2 ローカル環境でのログ確認
 
 ```bash
 # アプリケーションのログを確認
@@ -1408,7 +1463,7 @@ pnpm dev
 # ブラウザの開発者ツールでコンソールエラーを確認
 ```
 
-##### 7.2.3 システムログの確認
+##### 7.3.3 システムログの確認
 
 ```bash
 # Dockerシステムの状態確認

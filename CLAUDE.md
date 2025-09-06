@@ -12,7 +12,7 @@ alwaysApply: true
 **Database:**
 - External Supabase (not local PostgreSQL)
 - Use `psql` for database operations
-- Connection via `DATABASE_URL` environment variable
+- Connection via `SUPABASE_DATABASE_URL` environment variable
 
 **Testing:**
 - Use Playwright MCP for verification after changes

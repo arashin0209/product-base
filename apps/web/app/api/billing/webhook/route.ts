@@ -67,7 +67,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     // Update user's plan
     await tx
       .update(users)
-      .set({ planId: planId })
+      .set({ planType: planId })
       .where(eq(users.id, userId))
     
     // Upsert subscription record
@@ -117,7 +117,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     // Update user to free plan
     await tx
       .update(users)
-      .set({ planId: 'free' })
+      .set({ planType: 'free' })
       .where(eq(users.id, userId))
     
     // Mark subscription as canceled

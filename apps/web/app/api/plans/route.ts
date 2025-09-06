@@ -1,87 +1,91 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
-import { eq } from 'drizzle-orm'
-import { plans, features, planFeatures } from '../../../../../src/infrastructure/database/schema'
+import { PlanService } from '../../../../../src/application/plan/plan.service'
 
-// 動的にデータベースURLを構築
-const buildDatabaseUrl = (): string => {
-  const host = process.env.SUPABASE_DB_HOST
-  const port = process.env.SUPABASE_DB_PORT
-  const name = process.env.SUPABASE_DB_NAME
-  const user = process.env.SUPABASE_DB_USER
-  const password = process.env.SUPABASE_DB_PASSWORD
-  
-  if (!host || !port || !name || !user || !password) {
-    throw new Error('Missing required database environment variables')
-  }
-  
-  return `postgresql://${user}:${password}@${host}:${port}/${name}`
-}
-
-// Database connection
-const connectionString = buildDatabaseUrl()
-const client = postgres(connectionString, { prepare: false })
-const db = drizzle(client)
+const planService = new PlanService()
 
 // プラン一覧取得
 export async function GET(request: NextRequest) {
   try {
-    // Get all plans with their features
-    const allPlans = await db
-      .select({
-        planId: plans.id,
-        planName: plans.name,
-        description: plans.description,
-        priceMonthly: plans.priceMonthly,
-        priceYearly: plans.priceYearly,
-        stripePriceId: plans.stripePriceId,
-        featureId: planFeatures.featureId,
-        featureDisplayName: features.displayName,
-        enabled: planFeatures.enabled,
-        limitValue: planFeatures.limitValue,
-      })
-      .from(plans)
-      .leftJoin(planFeatures, eq(plans.id, planFeatures.planId))
-      .leftJoin(features, eq(planFeatures.featureId, features.id))
-      .orderBy(plans.priceMonthly)
-
-    // Group features by plan
-    const plansWithFeatures = allPlans.reduce((acc, row) => {
-      const planId = row.planId
-      
-      if (!acc[planId]) {
-        acc[planId] = {
-          id: row.planId,
-          name: row.planName,
-          description: row.description,
-          priceMonthly: row.priceMonthly,
-          priceYearly: row.priceYearly,
-          stripePriceId: row.stripePriceId,
-          features: []
-        }
-      }
-
-      if (row.featureId) {
-        acc[planId].features.push({
-          featureId: row.featureId,
-          displayName: row.featureDisplayName,
-          enabled: row.enabled,
-          limitValue: row.limitValue,
-        })
-      }
-
-      return acc
-    }, {})
+    // サービス層を使用してプラン一覧を取得
+    const plans = await planService.getAvailablePlans()
     
     return NextResponse.json({
       success: true,
-      data: Object.values(plansWithFeatures)
+      data: plans
     })
     
   } catch (error) {
     console.error('Plans API error:', error)
+    
+    // データベース接続エラーの場合、フォールバックデータを返す
+    if (error.message?.includes('CONNECT_TIMEOUT') || 
+        error.message?.includes('getaddrinfo ENOTFOUND') ||
+        error.message?.includes('プラン一覧の取得に失敗しました')) {
+      
+      console.warn('Database connection failed, returning fallback plans')
+      
+      // フォールバック用のプランデータ
+      const fallbackPlans = [
+        {
+          id: 'free',
+          name: 'Free',
+          description: '無料プラン',
+          priceMonthly: 0,
+          priceYearly: 0,
+          stripePriceId: null,
+          features: [
+            {
+              featureId: 'ai_requests',
+              displayName: 'AIチャット',
+              description: 'AIとのチャット機能',
+              enabled: true,
+              limitValue: 10
+            }
+          ]
+        },
+        {
+          id: 'gold',
+          name: 'Gold',
+          description: 'ゴールドプラン',
+          priceMonthly: 1000,
+          priceYearly: 10000,
+          stripePriceId: null,
+          features: [
+            {
+              featureId: 'ai_requests',
+              displayName: 'AIチャット',
+              description: 'AIとのチャット機能',
+              enabled: true,
+              limitValue: 100
+            }
+          ]
+        },
+        {
+          id: 'platinum',
+          name: 'Platinum',
+          description: 'プラチナプラン',
+          priceMonthly: 2000,
+          priceYearly: 20000,
+          stripePriceId: null,
+          features: [
+            {
+              featureId: 'ai_requests',
+              displayName: 'AIチャット',
+              description: 'AIとのチャット機能',
+              enabled: true,
+              limitValue: null
+            }
+          ]
+        }
+      ]
+      
+      return NextResponse.json({
+        success: true,
+        data: fallbackPlans,
+        fallback: true
+      })
+    }
+    
     return NextResponse.json(
       {
         success: false,

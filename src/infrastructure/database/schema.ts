@@ -10,7 +10,6 @@ export const plans = pgTable('plans', {
   priceYearly: decimal('price_yearly', { precision: 10, scale: 2 }),
   stripePriceId: varchar('stripe_price_id', { length: 255 }),
   active: boolean('active').default(true),
-  features: text('features').$type<Record<string, any>>().default({}),
   limits: text('limits').$type<Record<string, any>>().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp('updated_at', { withTimezone: true }).default(sql`now()`),

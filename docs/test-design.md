@@ -923,7 +923,7 @@ jobs:
       - run: pnpm install
       - run: pnpm test:integration
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+          SUPABASE_DATABASE_URL: postgresql://postgres:postgres@localhost:${SUPABASE_DB_PORT:-5432}/test
 
   e2e-tests:
     runs-on: ubuntu-latest

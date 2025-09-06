@@ -9,6 +9,12 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 
 // 動的にデータベースURLを構築
 const buildDatabaseUrl = (): string => {
+  // 既存のSUPABASE_DATABASE_URLが設定されている場合はそれを使用
+  if (process.env.SUPABASE_DATABASE_URL) {
+    return process.env.SUPABASE_DATABASE_URL
+  }
+  
+  // 分離された環境変数から構築
   const host = process.env.SUPABASE_DB_HOST
   const port = process.env.SUPABASE_DB_PORT
   const name = process.env.SUPABASE_DB_NAME
@@ -19,7 +25,19 @@ const buildDatabaseUrl = (): string => {
     throw new Error('Missing required database environment variables: SUPABASE_DB_HOST, SUPABASE_DB_PORT, SUPABASE_DB_NAME, SUPABASE_DB_USER, SUPABASE_DB_PASSWORD')
   }
   
-  return `postgresql://${user}:${password}@${host}:${port}/${name}`
+  // Supabaseの正しい接続URL形式を使用
+  // Transaction pooler (推奨) - IPv4対応
+  if (port === '6543') {
+    return `postgresql://postgres.${host.split('.')[0]}:${password}@aws-1-ap-southeast-1.pooler.supabase.com:${port}/${name}`
+  }
+  
+  // Direct connection - IPv6のみ
+  if (port === '5432') {
+    return `postgresql://${user}:${password}@db.${host}:${port}/${name}`
+  }
+  
+  // デフォルトはTransaction pooler
+  return `postgresql://postgres.${host.split('.')[0]}:${password}@aws-1-ap-southeast-1.pooler.supabase.com:6543/${name}`
 }
 
 // Database connection
