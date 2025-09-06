@@ -6,15 +6,16 @@ import { users } from '../../../../../../src/infrastructure/database/schema'
 import { requireAuth } from '../../../lib/auth'
 import { constantsService } from '../../../../../../src/application/constants/constants.service'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function GET(request: NextRequest) {
   try {
     const userId = await requireAuth(request)
     const defaultPlanId = await constantsService.getDefaultPlanId()
+    
+    // Create Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
     
     // Get user from Supabase auth
     const { data: { user: authUser } } = await supabase.auth.getUser(
