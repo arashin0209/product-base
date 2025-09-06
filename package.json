@@ -14,7 +14,20 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:optimized": "tsx scripts/migrate-optimized.ts",
-    "db:seed": "tsx src/infrastructure/database/seed.ts"
+    "db:seed": "tsx src/infrastructure/database/seed.ts",
+    "postinstall": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{md,json,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.4.8",
@@ -26,8 +39,10 @@
     "drizzle-kit": "^0.24.0",
     "eslint": "^8.57.0",
     "jsdom": "^24.1.1",
+    "lint-staged": "^16.1.6",
     "msw": "^2.3.4",
     "prettier": "^3.3.3",
+    "simple-git-hooks": "^2.13.1",
     "tsx": "^4.16.2",
     "typescript": "^5.4.5",
     "vitest": "^2.0.5"
