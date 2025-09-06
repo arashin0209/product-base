@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { PlanService } from '../../../../../../../../src/application/plan/plan.service'
-import { handleAPIError, createSuccessResponse } from '../../../../../../../../src/shared/errors'
+import { PlanService } from '../../../../../../../src/application/plan/plan.service'
+import { handleAPIError, createSuccessResponse } from '../../../../../../../src/shared/errors'
 import { requireAuth } from '../../../../lib/auth'
 
 const planService = new PlanService()

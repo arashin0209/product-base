@@ -3,8 +3,8 @@ import postgres from 'postgres'
 import * as dotenv from 'dotenv'
 import { plans, features, planFeatures } from './schema'
 
-// Load environment variables
-dotenv.config({ path: '.env.local' })
+// Load environment variables from project root .env file
+dotenv.config({ path: '.env' })
 
 // Direct connection for seed operations
 const seedClient = postgres(process.env.SUPABASE_DIRECT_URL!)

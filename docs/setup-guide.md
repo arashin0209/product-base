@@ -23,24 +23,57 @@ Product Baseは、Next.js、Supabase、Stripe、AIサービス（OpenAI/Claude/G
 ```
 
 ### 環境構成
-- **ローカル環境**: Docker（アプリのみ）+ テスト環境Supabase DB
-- **テスト環境**: Vercel（GitHub連携自動デプロイ）+ テスト環境Supabase DB
+- **ローカル環境**: Supabase DB（リモート）
+- **テスト環境**: Vercel（GitHub連携自動デプロイ）+ テスト環境Supabase DB  
 - **本番環境**: Vercel（GitHub連携自動デプロイ）+ 本番環境Supabase DB
 
 ## セットアップ手順
 
 ### 1. 環境変数の設定
 
-#### 1.1 環境変数ファイルのコピー
+#### 1.1 環境変数ファイルの場所
+
+このプロジェクトは**一つの環境変数ファイル**で統一管理されています。
+
+| ファイル | 用途 | 説明 |
+|---------|------|------|
+| `/Users/sakad/github/product-base/.env` | **すべての環境変数を一元管理** | プロジェクトルートのメイン環境変数ファイル |
+| `/Users/sakad/github/product-base/apps/web/.env` | シンボリックリンク | プロジェクトルートの`.env`へのシンボリックリンク |
+
+**設計思想**:
+- Next.jsが動作するには`apps/web/.env`ファイルが必要
+- しかし、ファイルが2つ存在すると不整合のリスクが発生する
+- そのため、`apps/web/.env`は`.env`を参照するシンボリックリンクとして設定
+- これにより、ファイルは2つ存在するが、内容に一貫性が保たれる
+
+#### 1.2 環境変数ファイルのセットアップ
 
 ```bash
-# プロジェクトルートで実行
-cp env.sample .env.local
+# プロジェクトルートで環境変数を設定
+vi .env
+
+# apps/web/.envをシンボリックリンクとして作成
+ln -s ../../.env apps/web/.env
+
+# 環境変数の設定を確認
+cat .env
+
+# シンボリックリンクが正しく作成されているか確認
+ls -la apps/web/.env
 ```
 
-#### 1.2 環境変数の説明
+**注意事項**:
+- **すべての環境変数変更はプロジェクトルートの `.env` で行ってください**
+- `apps/web/.env`はシンボリックリンクなので、直接編集しないでください
+- `apps/web/.env`を通常のファイルとして作成してはいけません（内容の不整合が発生します）
+- 変更後は必ずアプリケーションを再起動してください
+- Vercelデプロイでは問題なく動作します
+- 接続文字列に特殊文字（`!`, `#`など）が含まれる場合は、URLエンコードが必要です
+- この設計により、Next.jsの要件を満たしつつ、環境変数の一元管理を実現しています
 
-`.env.local`ファイルに以下の環境変数を設定する必要があります：
+#### 1.3 環境変数の説明
+
+`.env`ファイルに以下の環境変数を設定する必要があります：
 
 | 環境変数 | 説明 | 取得先 |
 |---------|------|--------|
@@ -63,53 +96,9 @@ cp env.sample .env.local
 
 ### 2. 必要なミドルウェアのインストール
 
-#### 2.1 Dockerを使用したセットアップ（推奨）
+#### 2.1 ローカル環境でのセットアップ
 
-**⚠️ 前提条件**: Docker設定ファイルの作成が必要です（2.3節参照）
-
-このプロジェクトはDockerを使用した開発環境をサポートしています：
-
-1. **Dockerのインストール**
-   ```bash
-   # macOS (Homebrewを使用)
-   brew install --cask docker
-   
-   # または、Docker Desktopを公式サイトからダウンロード
-   # https://www.docker.com/products/docker-desktop/
-   ```
-
-2. **Docker Composeの確認**
-   ```bash
-   # Docker Composeがインストールされているか確認
-   docker-compose --version
-   ```
-
-3. **Docker環境での起動**
-   ```bash
-   # まずDocker設定ファイルが存在することを確認
-   ls Dockerfile docker-compose.yml .dockerignore
-   
-   # プロジェクトルートで実行
-   docker-compose up -d
-   
-   # ログを確認
-   docker-compose logs -f
-   ```
-
-4. **Docker環境での開発**
-   ```bash
-   # コンテナ内でコマンドを実行
-   docker-compose exec app pnpm install
-   docker-compose exec app pnpm turbo dev
-   
-   # データベースマイグレーション
-   docker-compose exec app npx drizzle-kit generate
-   docker-compose exec app npx drizzle-kit migrate
-   ```
-
-#### 2.2 ローカル環境でのセットアップ
-
-##### 2.2.1 パッケージマネージャーの確認
+##### 2.1.1 パッケージマネージャーの確認
 
 このプロジェクトは`pnpm` + `turbo`を使用したモノレポ構成です：
 
@@ -120,7 +109,7 @@ npm install -g pnpm
 # turboは package.json で管理されているので個別インストール不要
 ```
 
-##### 2.2.2 依存関係のインストール
+##### 2.1.2 依存関係のインストール
 
 ```bash
 # プロジェクトルート（モノレポ全体）で実行
@@ -1250,22 +1239,48 @@ docker-compose down -v
 #### 7.1 よくある問題
 
 1. **環境変数が読み込まれない**
-   - `.env.local`ファイルが正しく作成されているか確認
+   - プロジェクトルートの`.env`ファイルが正しく作成されているか確認
+   - `apps/web/.env`がシンボリックリンクとして正しく設定されているか確認
    - アプリケーションを再起動
    - Docker環境では`docker-compose down && docker-compose up --build`で再起動
-   - **重要**: Next.jsでは `.env.local` が最優先される
+   - **重要**: このプロジェクトでは`.env`ファイルを一元管理し、`apps/web/.env`はシンボリックリンクとして設定
 
 2. **Supabase接続エラー**
    - 環境変数の値が正しいか確認
    - Supabaseプロジェクトがアクティブか確認
+   - 接続文字列に特殊文字（`!`, `#`など）が含まれる場合は、URLエンコードが必要
+   - 例: `ProductBase2024!SecureDB#789` → `ProductBase2024%21SecureDB%23789`
 
-3. **Stripe接続エラー**
+3. **シンボリックリンクの問題**
+   - `apps/web/.env`がシンボリックリンクとして正しく設定されているか確認
+   - シンボリックリンクが壊れている場合は再作成: `rm apps/web/.env && ln -s ../../.env apps/web/.env`
+   - シンボリックリンクの確認: `ls -la apps/web/.env`
+   - **重要**: `apps/web/.env`を通常のファイルとして作成してはいけません（内容の不整合が発生します）
+
+4. **Stripe接続エラー**
    - APIキーが正しいか確認
    - テストモードと本番モードの設定を確認
 
-4. **OpenAI接続エラー**
+5. **OpenAI接続エラー**
    - APIキーが有効か確認
    - レート制限に達していないか確認
+
+6. **環境変数ファイルの不整合問題**
+   - **症状**: 環境変数の値が期待通りに読み込まれない、または異なる値が読み込まれる
+   - **原因**: `apps/web/.env`が通常のファイルとして作成され、プロジェクトルートの`.env`と内容が異なる
+   - **解決策**: 
+     ```bash
+     # 1. 通常のファイルを削除
+     rm apps/web/.env
+     
+     # 2. シンボリックリンクとして再作成
+     ln -s ../../.env apps/web/.env
+     
+     # 3. 正しく作成されているか確認
+     ls -la apps/web/.env
+     # 出力例: lrwxr-xr-x ... apps/web/.env -> ../../.env
+     ```
+   - **予防策**: 環境変数の変更は必ずプロジェクトルートの`.env`ファイルのみで行う
 
 #### 7.2 認証・ユーザー管理関連のトラブル
 

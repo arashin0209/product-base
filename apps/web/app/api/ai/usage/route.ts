@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { AiService } from '../../../../../../../src/application/ai/ai.service'
-import { handleAPIError, createSuccessResponse } from '../../../../../../../src/shared/errors'
+import { AiService } from '@/application/ai/ai.service'
+import { handleAPIError, createSuccessResponse } from '@/shared/errors'
 import { requireAuth } from '../../../lib/auth'
 
 const aiService = new AiService()

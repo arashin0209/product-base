@@ -10,8 +10,8 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as dotenv from 'dotenv'
 
-// 環境変数読み込み
-dotenv.config()
+// 環境変数読み込み（プロジェクトルートの.envファイルから）
+dotenv.config({ path: '.env' })
 
 // Direct Connection URLを使用（マイグレーション用）
 const connectionString = process.env.SUPABASE_DIRECT_URL

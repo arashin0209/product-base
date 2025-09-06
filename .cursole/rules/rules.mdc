@@ -1,0 +1,23 @@
+---
+description: Essential development rules for Product Base
+globs:
+alwaysApply: true
+---
+
+**Environment Variables:**
+- Use project root `.env` file only
+- `apps/web/.env` must be a symbolic link: `ln -s ../../.env apps/web/.env`
+- Never create `.env.local` files
+
+**Database:**
+- External Supabase (not local PostgreSQL)
+- Use `psql` for database operations
+- Connection via `DATABASE_URL` environment variable
+
+**Testing:**
+- Use Playwright MCP for verification after changes
+- Use Playwright MCP for Supabase, Stripe, Google Cloud Platform configuration screens
+- Check console logs for errors
+
+**Maintenance:**
+- Clear cache and restart server when disk space is low (see @setup-guide.md)

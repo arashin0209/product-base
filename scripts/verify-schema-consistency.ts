@@ -7,8 +7,8 @@
 import * as dotenv from 'dotenv'
 import postgres from 'postgres'
 
-// 環境変数読み込み
-dotenv.config()
+// 環境変数読み込み（プロジェクトルートの.envファイルから）
+dotenv.config({ path: '.env' })
 
 const connectionString = process.env.SUPABASE_DIRECT_URL
 if (!connectionString) {

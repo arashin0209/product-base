@@ -15,6 +15,9 @@ const CreateUserSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('DATABASE_URL:', process.env.DATABASE_URL)
+    console.log('SUPABASE_DATABASE_URL:', process.env.SUPABASE_DATABASE_URL)
+    
     const body = await request.json()
     const { userId, email, name, planType } = CreateUserSchema.parse(body)
     
@@ -29,21 +32,24 @@ export async function POST(request: NextRequest) {
       throw new APIError('USER_EXISTS', 'ユーザーは既に存在します', 400)
     }
     
-    // Create user record
+    // Create user record - using actual table structure
     const [newUser] = await db
       .insert(users)
       .values({
         id: userId, // Critical: use auth.users.id from Supabase
+        email,
         name,
-        planId: planType,
+        planType: planType, // Will use default 'free' if not provided
+        planStatus: 'active', // Will use default 'active'
       })
       .returning()
     
     return Response.json(createSuccessResponse({
       id: newUser.id,
-      email, // Return email from request since it's not stored in our users table
+      email: newUser.email,
       name: newUser.name,
-      planType: newUser.planId,
+      planType: newUser.planType,
+      planStatus: newUser.planStatus,
       createdAt: newUser.createdAt,
       updatedAt: newUser.updatedAt,
     }))

@@ -5,14 +5,15 @@ import { sql } from 'drizzle-orm'
 export const plans = pgTable('plans', {
   id: varchar('id', { length: 50 }).primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
-  displayName: varchar('display_name', { length: 100 }).notNull(),
+  description: text('description').notNull(),
   priceMonthly: decimal('price_monthly', { precision: 10, scale: 2 }),
   priceYearly: decimal('price_yearly', { precision: 10, scale: 2 }),
-  stripePriceIdMonthly: varchar('stripe_price_id_monthly', { length: 100 }),
-  stripePriceIdYearly: varchar('stripe_price_id_yearly', { length: 100 }),
-  isActive: boolean('is_active').notNull().default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  stripePriceId: varchar('stripe_price_id', { length: 255 }),
+  active: boolean('active').default(true),
+  features: text('features').$type<Record<string, any>>().default({}),
+  limits: text('limits').$type<Record<string, any>>().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).default(sql`now()`),
 })
 
 // Features table
@@ -39,20 +40,18 @@ export const planFeatures = pgTable('plan_features', {
   pk: { columns: [table.planId, table.featureId], name: "plan_features_pkey" },
 }))
 
-// Users table (将来的な拡張用・現在は未使用)
-// 📍 重要: 現在の実装では auth.users.plan_type を直接使用
-// このテーブルは将来的にユーザー情報拡張時に使用予定
+// Users table - updated to match actual database structure
 export const users = pgTable('users', {
   id: uuid('id').primaryKey(), // auth.users.id と同じ値
-  name: varchar('name', { length: 100 }).notNull(),
-  planId: varchar('plan_id', { length: 50 }).notNull().default('free').references(() => plans.id),
-  stripeCustomerId: varchar('stripe_customer_id', { length: 100 }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => ({
-  // 注意: auth.usersへの外部キー制約は手動設定が必要
-  // 現在の実装ではこのテーブルは使用せず、auth.users.plan_type を参照
-}))
+  email: varchar('email', { length: 255 }).notNull(),
+  name: varchar('name', { length: 100 }),
+  planType: varchar('plan_type', { length: 50 }).default('free'),
+  planStatus: varchar('plan_status', { length: 50 }).default('active'),
+  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
+  stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).default(sql`now()`),
+})
 
 // User Subscriptions table
 export const userSubscriptions = pgTable('user_subscriptions', {

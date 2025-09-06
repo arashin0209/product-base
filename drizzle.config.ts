@@ -1,8 +1,8 @@
 import type { Config } from 'drizzle-kit'
 import * as dotenv from 'dotenv'
 
-// Load environment variables
-dotenv.config({ path: '.env.local' })
+// Load environment variables from project root .env file
+dotenv.config({ path: '.env' })
 
 export default {
   schema: './src/infrastructure/database/schema.ts',

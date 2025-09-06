@@ -3,9 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button } from '@product-base/ui'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@product-base/ui'
-import { Input } from '@product-base/ui'
+// Temporary: using HTML elements instead of UI components for testing
 import { useAuth } from '../hooks/useAuth'
 
 export default function LoginPage() {
@@ -60,14 +58,15 @@ export default function LoginPage() {
           <p className="text-gray-600">アカウントにログイン</p>
         </div>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>ログイン</CardTitle>
-            <CardDescription>
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold">ログイン</h2>
+            <p className="text-gray-600 mt-2">
               メールアドレスとパスワードでログインしてください
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </p>
+          </div>
+          
+          <div className="space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3">
                 <p className="text-sm text-red-600">{error}</p>
@@ -75,50 +74,58 @@ export default function LoginPage() {
             )}
             
             <form onSubmit={handleEmailLogin} className="space-y-4">
-              <Input
-                label="メールアドレス"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-                placeholder="your-email@example.com"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  メールアドレス
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="your-email@example.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                />
+              </div>
               
-              <Input
-                label="パスワード"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                placeholder="パスワードを入力"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  パスワード
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="パスワードを入力"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                />
+              </div>
               
-              <Button
+              <button
                 type="submit"
-                className="w-full"
-                loading={loading}
-                disabled={!email || !password}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!email || !password || loading}
               >
-                ログイン
-              </Button>
+                {loading ? 'ログイン中...' : 'ログイン'}
+              </button>
             </form>
             
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
+                <span className="bg-white px-2 text-gray-500">
                   または
                 </span>
               </div>
             </div>
             
-            <Button
-              variant="outline"
-              className="w-full"
+            <button
+              className="w-full border border-gray-300 bg-white text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               onClick={handleGoogleLogin}
               disabled={loading}
               data-testid="google-signin-button"
@@ -142,16 +149,16 @@ export default function LoginPage() {
                 />
               </svg>
               Googleでサインイン
-            </Button>
+            </button>
             
             <div className="text-center text-sm">
-              <span className="text-muted-foreground">アカウントをお持ちでない場合は </span>
-              <Link href="/signup" className="text-primary hover:underline">
+              <span className="text-gray-500">アカウントをお持ちでない場合は </span>
+              <Link href="/signup" className="text-blue-600 hover:underline">
                 新規登録はこちら
               </Link>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

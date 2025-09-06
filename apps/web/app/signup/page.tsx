@@ -3,9 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button } from '@product-base/ui'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@product-base/ui'
-import { Input } from '@product-base/ui'
+// Temporary: using HTML elements instead of UI components for testing
 import { useAuth } from '../hooks/useAuth'
 
 export default function SignUpPage() {
@@ -95,14 +93,15 @@ export default function SignUpPage() {
           <p className="text-gray-600">アカウントを作成</p>
         </div>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>新規登録</CardTitle>
-            <CardDescription>
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold">新規登録</h2>
+            <p className="text-gray-600 mt-2">
               無料アカウントを作成してサービスを始めましょう
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </p>
+          </div>
+          
+          <div className="space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3">
                 <p className="text-sm text-red-600">{error}</p>
@@ -110,45 +109,65 @@ export default function SignUpPage() {
             )}
             
             <form onSubmit={handleSignUp} className="space-y-4">
-              <Input
-                label="お名前"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                disabled={loading}
-                placeholder="田中 太郎"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  お名前
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="田中 太郎"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                />
+              </div>
               
-              <Input
-                label="メールアドレス"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-                placeholder="your-email@example.com"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  メールアドレス
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="your-email@example.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                />
+              </div>
               
-              <Input
-                label="パスワード"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                placeholder="8文字以上、英数字混在"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  パスワード
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="8文字以上、英数字混在"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                />
+              </div>
               
-              <Input
-                label="パスワード確認"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                disabled={loading}
-                placeholder="パスワードを再入力"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  パスワード確認
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="パスワードを再入力"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                />
+              </div>
               
               <div className="flex items-center space-x-2">
                 <input
@@ -160,41 +179,39 @@ export default function SignUpPage() {
                   disabled={loading}
                 />
                 <label htmlFor="terms" className="text-sm text-gray-700">
-                  <Link href="/terms" className="text-primary hover:underline">
+                  <Link href="/terms" className="text-blue-600 hover:underline">
                     利用規約
                   </Link>
                   と
-                  <Link href="/privacy" className="text-primary hover:underline">
+                  <Link href="/privacy" className="text-blue-600 hover:underline">
                     プライバシーポリシー
                   </Link>
                   に同意する
                 </label>
               </div>
               
-              <Button
+              <button
                 type="submit"
-                className="w-full"
-                loading={loading}
-                disabled={!email || !password || !confirmPassword || !name || !agreeToTerms}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!email || !password || !confirmPassword || !name || !agreeToTerms || loading}
               >
-                アカウント作成
-              </Button>
+                {loading ? 'アカウント作成中...' : 'アカウント作成'}
+              </button>
             </form>
             
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
+                <span className="bg-white px-2 text-gray-500">
                   または
                 </span>
               </div>
             </div>
             
-            <Button
-              variant="outline"
-              className="w-full"
+            <button
+              className="w-full border border-gray-300 bg-white text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               onClick={handleGoogleSignUp}
               disabled={loading}
             >
@@ -217,16 +234,16 @@ export default function SignUpPage() {
                 />
               </svg>
               Googleで登録
-            </Button>
+            </button>
             
             <div className="text-center text-sm">
-              <span className="text-muted-foreground">すでにアカウントをお持ちの場合は </span>
-              <Link href="/login" className="text-primary hover:underline">
+              <span className="text-gray-500">すでにアカウントをお持ちの場合は </span>
+              <Link href="/login" className="text-blue-600 hover:underline">
                 ログインはこちら
               </Link>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

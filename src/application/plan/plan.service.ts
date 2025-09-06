@@ -26,21 +26,21 @@ export class PlanService {
   // ユーザーの現在のプラン情報を取得  
   async getUserPlanInfo(userId: string): Promise<UserPlanInfo | null> {
     try {
-      // auth.usersテーブルからplan_typeを取得（既存構造）
-      const userResult = await db.execute(sql`
-        SELECT 
-          u.plan_type as plan_id,
-          p.name as plan_name,
-          p.name as display_name
-        FROM auth.users u
-        LEFT JOIN plans p ON u.plan_type = p.id
-        WHERE u.id = ${userId}
-        LIMIT 1
-      `)
+      // usersテーブルからplan_typeを取得
+      const userResult = await db
+        .select({
+          planId: users.planType,
+          planName: plans.name,
+          displayName: plans.name, // displayNameカラムがないのでnameを使用
+        })
+        .from(users)
+        .leftJoin(plans, eq(users.planType, plans.id))
+        .where(eq(users.id, userId))
+        .limit(1)
 
-      if (!userResult.rows.length) return null
+      if (!userResult.length) return null
 
-      const user = userResult.rows[0] as { plan_id: string; plan_name: string; display_name: string }
+      const user = userResult[0]
 
       // プラン機能を取得
       const planFeaturesList = await db
@@ -53,7 +53,7 @@ export class PlanService {
         .from(features)
         .leftJoin(planFeatures, and(
           eq(planFeatures.featureId, features.id),
-          eq(planFeatures.planId, user.planId)
+          eq(planFeatures.planId, user.planId || 'free')
         ))
         .where(eq(features.isActive, true))
 
@@ -96,9 +96,9 @@ export class PlanService {
       }))
 
       return {
-        planId: user.plan_id,
-        planName: user.plan_name || '',
-        displayName: user.display_name || '',
+        planId: user.planId || 'free',
+        planName: user.planName || 'Free',
+        displayName: user.displayName || 'Free',
         features: featuresWithUsage,
         subscription: subscription.length ? {
           status: subscription[0].status,
@@ -116,18 +116,21 @@ export class PlanService {
   // 機能利用可否チェック
   async checkFeatureAccess(userId: string, featureId: string): Promise<boolean> {
     try {
-      const result = await db.execute(sql`
-        SELECT pf.enabled
-        FROM auth.users u
-        INNER JOIN plan_features pf ON pf.plan_id = u.plan_type
-        INNER JOIN features f ON f.id = pf.feature_id
-        WHERE u.id = ${userId} 
-          AND pf.feature_id = ${featureId}
-          AND f.is_active = true
-        LIMIT 1
-      `)
+      const result = await db
+        .select({
+          enabled: planFeatures.enabled,
+        })
+        .from(users)
+        .innerJoin(planFeatures, eq(planFeatures.planId, users.planType))
+        .innerJoin(features, eq(features.id, planFeatures.featureId))
+        .where(and(
+          eq(users.id, userId),
+          eq(planFeatures.featureId, featureId),
+          eq(features.isActive, true)
+        ))
+        .limit(1)
 
-      return result.rows.length > 0 && result.rows[0].enabled
+      return result.length > 0 && result[0].enabled
     } catch (error) {
       console.error('Error checking feature access:', error)
       return false
@@ -138,19 +141,24 @@ export class PlanService {
   async checkUsageLimit(userId: string, featureId: string): Promise<{ allowed: boolean; current: number; limit: number | null }> {
     try {
       // 制限値を取得
-      const limitResult = await db.execute(sql`
-        SELECT pf.limit_value, pf.enabled
-        FROM auth.users u
-        INNER JOIN plan_features pf ON pf.plan_id = u.plan_type
-        WHERE u.id = ${userId} AND pf.feature_id = ${featureId}
-        LIMIT 1
-      `)
+      const limitResult = await db
+        .select({
+          limitValue: planFeatures.limitValue,
+          enabled: planFeatures.enabled,
+        })
+        .from(users)
+        .innerJoin(planFeatures, eq(planFeatures.planId, users.planType))
+        .where(and(
+          eq(users.id, userId),
+          eq(planFeatures.featureId, featureId)
+        ))
+        .limit(1)
 
-      if (!limitResult.rows.length || !limitResult.rows[0].enabled) {
+      if (!limitResult.length || !limitResult[0].enabled) {
         return { allowed: false, current: 0, limit: 0 }
       }
 
-      const limit = limitResult.rows[0].limit_value
+      const limit = limitResult[0].limitValue
 
       // 制限なし（無制限）の場合
       if (limit === null) {
@@ -252,12 +260,14 @@ export class PlanService {
         throw new Error('指定されたプランが存在しません')
       }
 
-      // auth.usersテーブルのplan_typeを更新
-      await db.execute(sql`
-        UPDATE auth.users 
-        SET plan_type = ${newPlanId}, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${userId}
-      `)
+      // usersテーブルのplanTypeを更新
+      await db
+        .update(users)
+        .set({ 
+          planType: newPlanId,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId))
 
       return true
     } catch (error) {

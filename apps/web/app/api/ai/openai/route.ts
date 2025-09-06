@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import OpenAI from 'openai'
-import { db } from '../../../../../../src/infrastructure/database/connection'
-import { users, aiUsageLogs, planFeatures } from '../../../../../../src/infrastructure/database/schema'
-import { handleAPIError, createSuccessResponse, APIError } from '../../../../../../src/shared/errors'
+import { db } from '@/infrastructure/database/connection'
+import { users, aiUsageLogs, planFeatures } from '@/infrastructure/database/schema'
+import { handleAPIError, createSuccessResponse, APIError } from '@/shared/errors'
 import { requireAuth } from '../../../lib/auth'
 import { eq, and, count, gte, sql } from 'drizzle-orm'
 
