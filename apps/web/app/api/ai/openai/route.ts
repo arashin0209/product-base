@@ -7,10 +7,6 @@ import { handleAPIError, createSuccessResponse, APIError } from '@/shared/errors
 import { requireAuth } from '../../../lib/auth'
 import { eq, and, count, gte, sql } from 'drizzle-orm'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-})
-
 const OpenAIRequestSchema = z.object({
   message: z.string().min(1),
   model: z.string().default('gpt-4o-mini'),
@@ -24,6 +20,11 @@ export async function POST(request: NextRequest) {
     const userId = 'test-user-id' // await requireAuth(request)
     const body = await request.json()
     const { message, model, max_tokens, temperature } = OpenAIRequestSchema.parse(body)
+    
+    // Initialize OpenAI client
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY!,
+    })
     
     // 一時的にバイパスしてチャット機能の動作確認
     // Check if user has AI feature access
