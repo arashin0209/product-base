@@ -47,8 +47,8 @@ const buildDatabaseUrl = (): string => {
 // Database connection
 const connectionString = buildDatabaseUrl()
 
-// Validate the connection string format - only throw error in production build
-if (process.env.NODE_ENV === 'production' && (connectionString.includes('[YOUR_DB_PASSWORD]') || connectionString.includes('[HOST]') || connectionString.includes('[PORT]'))) {
+// Validate the connection string format - only throw error in production runtime (not CI/Vercel build)
+if (process.env.NODE_ENV === 'production' && !process.env.CI && !process.env.VERCEL && (connectionString.includes('[YOUR_DB_PASSWORD]') || connectionString.includes('[HOST]') || connectionString.includes('[PORT]'))) {
   throw new Error('Please update the database connection string with actual values in .env file')
 }
 
