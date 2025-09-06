@@ -58,7 +58,7 @@ export class ConstantsService {
     try {
       // データベースから最新データを取得
       const [plansList, featuresList] = await Promise.all([
-        db.select({ id: plans.id }).from(plans).where(eq(plans.active, true)),
+        db.select({ id: plans.id }).from(plans).where(eq(plans.isActive, true)),
         db.select({ id: features.id }).from(features).where(eq(features.isActive, true))
       ])
 
