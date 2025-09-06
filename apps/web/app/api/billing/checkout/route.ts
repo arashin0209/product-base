@@ -35,15 +35,11 @@ export async function POST(request: NextRequest) {
     const { plan_id, billing_cycle, success_url, cancel_url } = DynamicCheckoutSchema.parse(body)
     
     // Get user information
-    const [user] = await db
+    let [user] = await db
       .select()
       .from(users)
       .where(eq(users.id, userId))
       .limit(1)
-    
-    if (!user) {
-      throw new APIError('NOT_FOUND', 'ユーザーが見つかりません', 404)
-    }
     
     // Get user email from Supabase
     const supabase = createServerSupabaseClient()
@@ -55,10 +51,30 @@ export async function POST(request: NextRequest) {
       throw new APIError('BAD_REQUEST', 'ユーザーメールアドレスが取得できません', 400)
     }
     
+    // If user doesn't exist, create one
+    if (!user) {
+      console.log('User not found, creating new user record for userId:', userId)
+      
+      // Create user record
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          id: userId,
+          name: authUser.user_metadata?.full_name || authUser.email.split('@')[0],
+          plan_id: 'free'
+        })
+        .returning()
+      
+      user = newUser
+      console.log('User created successfully:', user)
+    }
+    
     // Get price ID based on plan and billing cycle
-    const priceId = billing_cycle === 'monthly' 
-      ? STRIPE_PRICES[`${plan_id}_monthly` as keyof typeof STRIPE_PRICES]
-      : STRIPE_PRICES[`${plan_id}_monthly` as keyof typeof STRIPE_PRICES] // TODO: Add yearly prices
+    const priceId = STRIPE_PRICES[`${plan_id}_${billing_cycle}` as keyof typeof STRIPE_PRICES]
+    
+    if (!priceId) {
+      throw new APIError('BAD_REQUEST', `価格IDが見つかりません: ${plan_id}_${billing_cycle}`, 400)
+    }
     
     // Create or get Stripe customer
     let customerId = user.stripeCustomerId

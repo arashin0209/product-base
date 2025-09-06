@@ -6,13 +6,13 @@ export const plans = pgTable('plans', {
   id: varchar('id', { length: 50 }).primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
   displayName: varchar('display_name', { length: 100 }).notNull(),
+  description: text('description'),
   priceMonthly: decimal('price_monthly', { precision: 10, scale: 2 }),
   priceYearly: decimal('price_yearly', { precision: 10, scale: 2 }),
-  stripePriceIdMonthly: varchar('stripe_price_id_monthly', { length: 100 }),
-  stripePriceIdYearly: varchar('stripe_price_id_yearly', { length: 100 }),
-  isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).default(sql`now()`),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).default(sql`now()`),
+  stripePriceId: varchar('stripe_price_id', { length: 100 }),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
 })
 
 // Features table

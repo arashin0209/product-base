@@ -27,6 +27,8 @@ export class PlanService {
   // ユーザーの現在のプラン情報を取得  
   async getUserPlanInfo(userId: string): Promise<UserPlanInfo | null> {
     try {
+      console.log('Getting user plan info for userId:', userId)
+      
       // public.usersテーブルからplan_idを取得
       const userResult = await db
         .select({
@@ -39,14 +41,49 @@ export class PlanService {
         .where(eq(users.id, userId))
         .limit(1)
 
-      if (!userResult.length) {
-        // Database Triggerで自動的にユーザーレコードが作成されるため、
-        // ユーザーが存在しない場合はnullを返す
-        console.log('User not found in public.users, Database Trigger should have created it')
-        return null
-      }
+      console.log('User query result:', userResult)
 
-      const user = userResult[0]
+      let user
+      if (!userResult.length) {
+        // ユーザーが存在しない場合は自動作成
+        console.log('User not found in public.users, creating new user record')
+        
+        const defaultPlanId = await constantsService.getDefaultPlanId()
+        
+        const [newUser] = await db
+          .insert(users)
+          .values({
+            id: userId,
+            name: 'テストユーザー', // デフォルト名
+            planId: defaultPlanId
+          })
+          .returning()
+        
+        console.log('User created successfully:', newUser)
+        
+        // 作成したユーザーでプラン情報を再取得
+        const newUserResult = await db
+          .select({
+            planId: users.planId,
+            planName: plans.name,
+            displayName: plans.displayName,
+          })
+          .from(users)
+          .leftJoin(plans, eq(users.planId, plans.id))
+          .where(eq(users.id, userId))
+          .limit(1)
+        
+        if (!newUserResult.length) {
+          console.log('Failed to create user record')
+          return null
+        }
+        
+        user = newUserResult[0]
+        console.log('Found newly created user:', user)
+      } else {
+        user = userResult[0]
+        console.log('Found existing user:', user)
+      }
 
       // プラン機能を取得
       const planFeaturesList = await db
@@ -228,7 +265,7 @@ export class PlanService {
           description: plans.description,
           priceMonthly: plans.priceMonthly,
           priceYearly: plans.priceYearly,
-          stripePriceId: plans.stripePriceIdMonthly,
+          stripePriceId: plans.stripePriceId,
         })
         .from(plans)
         .where(eq(plans.isActive, true))

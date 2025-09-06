@@ -41,6 +41,7 @@ export default function DashboardPage() {
   const [chatMessage, setChatMessage] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
   const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([])
+  const [billingLoading, setBillingLoading] = useState(false)
   const [allPlans, setAllPlans] = useState<Array<{
     id: string
     name: string
@@ -138,6 +139,43 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Failed to fetch AI usage:', error)
+    }
+  }
+
+  const handleBillingPortal = async () => {
+    if (!user) return
+    
+    setBillingLoading(true)
+    try {
+      const token = await supabase.auth.getSession().then(({ data }) => data.session?.access_token)
+      if (!token) return
+
+      const response = await fetch('/api/billing/portal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          return_url: `${window.location.origin}/dashboard`
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.data?.portal_url) {
+          window.location.href = data.data.portal_url
+        }
+      } else {
+        const errorData = await response.json()
+        console.error('Billing Portal作成エラー:', errorData)
+        alert('請求管理画面の作成に失敗しました。もう一度お試しください。')
+      }
+    } catch (error) {
+      console.error('Billing Portalエラー:', error)
+      alert('エラーが発生しました。もう一度お試しください。')
+    } finally {
+      setBillingLoading(false)
     }
   }
 
@@ -286,6 +324,20 @@ export default function DashboardPage() {
                       }}
                     ></div>
                   </div>
+                </div>
+              )}
+              
+              {/* Billing Portal Button */}
+              {planInfo.planId !== 'free' && (
+                <div className="mt-4 pt-4 border-t">
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={handleBillingPortal}
+                    disabled={billingLoading}
+                  >
+                    {billingLoading ? '読み込み中...' : '請求管理'}
+                  </Button>
                 </div>
               )}
             </CardContent>

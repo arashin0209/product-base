@@ -32,6 +32,7 @@ export default function PricingPage() {
   const [plans, setPlans] = useState<Plan[]>([])
   const [loadingPlans, setLoadingPlans] = useState(true)
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null)
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
   const [planInfo, setPlanInfo] = useState<{
     planId: string
     planName: string
@@ -135,28 +136,50 @@ export default function PricingPage() {
       return
     }
 
+    if (!user) {
+      router.push('/login')
+      return
+    }
+
     try {
+      const session = await supabase.auth.getSession()
+      console.log('Session data:', session)
+      const accessToken = session.data.session?.access_token
+      console.log('Access token:', accessToken)
+      
+      if (!accessToken) {
+        console.error('No access token found')
+        alert('認証エラーが発生しました。再度ログインしてください。')
+        return
+      }
+
       const response = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
-          priceId: plan.stripePriceId,
-          planId: plan.id
+          plan_id: plan.id,
+          billing_cycle: billingCycle,
+          success_url: `${window.location.origin}/dashboard?success=true`,
+          cancel_url: `${window.location.origin}/pricing?canceled=true`
         })
       })
 
       if (response.ok) {
         const data = await response.json()
-        if (data.url) {
-          window.location.href = data.url
+        if (data.data?.checkout_url) {
+          window.location.href = data.data.checkout_url
         }
       } else {
-        console.error('Checkout作成エラー')
+        const errorData = await response.json()
+        console.error('Checkout作成エラー:', errorData)
+        alert('決済セッションの作成に失敗しました。もう一度お試しください。')
       }
     } catch (error) {
       console.error('プラン選択エラー:', error)
+      alert('エラーが発生しました。もう一度お試しください。')
     }
   }
 
@@ -177,9 +200,37 @@ export default function PricingPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">プラン選択</h1>
-          <p className="text-xl text-gray-600">
+          <p className="text-xl text-gray-600 mb-8">
             あなたに最適なプランをお選びください
           </p>
+          
+          {/* 年額/月額切り替え */}
+          <div className="flex items-center justify-center space-x-4">
+            <span className={`text-sm font-medium ${billingCycle === 'monthly' ? 'text-gray-900' : 'text-gray-500'}`}>
+              月額
+            </span>
+            <button
+              type="button"
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                billingCycle === 'yearly' ? 'bg-primary' : 'bg-gray-200'
+              }`}
+              onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'yearly' : 'monthly')}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  billingCycle === 'yearly' ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className={`text-sm font-medium ${billingCycle === 'yearly' ? 'text-gray-900' : 'text-gray-500'}`}>
+              年額
+            </span>
+            {billingCycle === 'yearly' && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                20% お得
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -215,8 +266,15 @@ export default function PricingPage() {
                   {plan.description}
                 </CardDescription>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">¥{Math.floor(plan.priceMonthly).toLocaleString()}</span>
+                  <span className="text-4xl font-bold">
+                    ¥{Math.floor(billingCycle === 'yearly' ? plan.priceYearly / 12 : plan.priceMonthly).toLocaleString()}
+                  </span>
                   <span className="text-gray-600">/月</span>
+                  {billingCycle === 'yearly' && (
+                    <div className="text-sm text-gray-500 mt-1">
+                      年額 ¥{Math.floor(plan.priceYearly).toLocaleString()}
+                    </div>
+                  )}
                 </div>
               </CardHeader>
 
