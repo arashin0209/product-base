@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Button } from '@product-base/ui'
 import { Input } from '@product-base/ui'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@product-base/ui'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../../hooks/useAuth'
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -17,7 +17,7 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
-  const { signUp, signInWithGoogle } = useAuth()
+  const { signUp, signUpWithGoogle } = useAuth()
   const router = useRouter()
 
   const validatePassword = (pwd: string) => {
@@ -79,7 +79,7 @@ export default function SignUpPage() {
     setLoading(true)
     setError('')
     
-    const { error } = await signInWithGoogle()
+    const { error } = await signUpWithGoogle()
     
     if (error) {
       setError('Google認証に失敗しました')
