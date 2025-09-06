@@ -3,13 +3,12 @@ import { PlanService } from '../../../../../../../src/application/plan/plan.serv
 import { handleAPIError, createSuccessResponse } from '../../../../../../../src/shared/errors'
 import { requireAuth } from '../../../../lib/auth'
 
-const planService = new PlanService()
-
 // ユーザーのプラン情報取得
 export async function GET(request: NextRequest) {
   try {
     const userId = await requireAuth(request)
     
+    const planService = new PlanService()
     const planInfo = await planService.getUserPlanInfo(userId)
     
     if (!planInfo) {
@@ -47,6 +46,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 })
     }
     
+    const planService = new PlanService()
     await planService.updateUserPlan(userId, planId)
     
     // 更新後のプラン情報を取得

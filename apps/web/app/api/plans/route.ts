@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PlanService } from '../../../../../src/application/plan/plan.service'
 
-const planService = new PlanService()
-
 // プラン一覧取得
 export async function GET(request: NextRequest) {
   try {
     // サービス層を使用してプラン一覧を取得
+    const planService = new PlanService()
     const plans = await planService.getAvailablePlans()
     
     return NextResponse.json({
