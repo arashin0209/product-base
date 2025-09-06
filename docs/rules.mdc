@@ -4,6 +4,12 @@ globs:
 alwaysApply: true
 ---
 
+**⚠️ CRITICAL WARNING:**
+- **NEVER run `cp -p .env.sample .env`** - This will overwrite existing environment variables
+- **NEVER use `cp` command** - Use `cat > file` or `write` tool instead
+- Always check if .env already exists before creating it
+- Use `cat .env` to check current values first
+
 **Environment Variables:**
 - Use project root `.env` file only
 - `apps/web/.env` must be a symbolic link: `ln -s ../../.env apps/web/.env`

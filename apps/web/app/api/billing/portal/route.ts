@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { stripe } from '../../../lib/stripe'
+import { stripe } from '../../../../lib/stripe'
 import { db } from '../../../../../../src/infrastructure/database/connection'
 import { users } from '../../../../../../src/infrastructure/database/schema'
 import { handleAPIError, createSuccessResponse, APIError } from '../../../../../../src/shared/errors'
-import { requireAuth } from '../../../lib/auth'
+import { requireAuth } from '../../../../lib/auth'
 import { eq } from 'drizzle-orm'
 
 const BillingPortalSchema = z.object({

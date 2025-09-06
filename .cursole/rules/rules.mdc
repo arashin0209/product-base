@@ -21,3 +21,17 @@ alwaysApply: true
 
 **Maintenance:**
 - Clear cache and restart server when disk space is low (see @setup-guide.md)
+
+**Schema Consistency:**
+- When schema, migration files, and Supabase database state are inconsistent:
+  - Investigate Supabase service database state using `psql`
+  - Compare differences with schema and migration files
+  - If differences exist, align schema files with database state first, then decide on fix strategy
+- When hardcoded information diverges from database: Always refactor hardcoded values to fetch from database
+
+**Development Order:**
+- Always develop in this order to maintain architecture integrity:
+  1. Infrastructure layer (database, external service connections)
+  2. Service layer (business logic)
+  3. Frontend and API layer (presentation)
+- This prevents architectural breakdown and ensures proper dependency flow

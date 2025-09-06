@@ -1,6 +1,7 @@
 import { db } from '../../infrastructure/database/connection'
 import { plans, features, planFeatures, users, userSubscriptions, aiUsageLogs } from '../../infrastructure/database/schema'
 import { eq, and, gte, sql, desc } from 'drizzle-orm'
+import { constantsService } from '../constants/constants.service'
 
 export interface UserPlanInfo {
   planId: string
@@ -53,7 +54,7 @@ export class PlanService {
         .from(features)
         .leftJoin(planFeatures, and(
           eq(planFeatures.featureId, features.id),
-          eq(planFeatures.planId, user.planId || 'free')
+          eq(planFeatures.planId, user.planId || await constantsService.getDefaultPlanId())
         ))
         .where(eq(features.isActive, true))
 
@@ -87,16 +88,24 @@ export class PlanService {
         .limit(1)
 
       // 機能情報に使用量を追加
-      const featuresWithUsage: PlanFeature[] = planFeaturesList.map(feature => ({
+      const featureConstants = await constantsService.getFeatureConstants()
+      const featuresWithUsage: PlanFeature[] = planFeaturesList.map((feature: {
+        featureId: string;
+        displayName: string;
+        enabled: boolean | null;
+        limitValue: number | null;
+      }) => ({
         featureId: feature.featureId,
         displayName: feature.displayName,
         enabled: feature.enabled || false,
         limitValue: feature.limitValue,
-        currentUsage: feature.featureId === 'ai_requests' ? currentAiUsage : undefined,
+        currentUsage: feature.featureId === featureConstants.AI_REQUESTS_FEATURE_ID ? currentAiUsage : undefined,
       }))
 
+      const defaultPlanId = await constantsService.getDefaultPlanId()
+
       return {
-        planId: user.planId || 'free',
+        planId: user.planId || defaultPlanId,
         planName: user.planName || 'Free',
         displayName: user.displayName || 'Free',
         features: featuresWithUsage,
@@ -166,7 +175,8 @@ export class PlanService {
       }
 
       // 現在の使用量を取得（AI機能の場合）
-      if (featureId === 'ai_requests') {
+      const featureConstants = await constantsService.getFeatureConstants()
+      if (featureId === featureConstants.AI_REQUESTS_FEATURE_ID) {
         const currentMonth = new Date()
         currentMonth.setDate(1)
         currentMonth.setHours(0, 0, 0, 0)
@@ -216,8 +226,15 @@ export class PlanService {
 
       // 各プランの機能を取得
       const plansWithFeatures = await Promise.all(
-        plansList.map(async (plan) => {
-          const features = await db
+        plansList.map(async (plan: {
+          id: string;
+          name: string;
+          description: string | null;
+          priceMonthly: number | null;
+          priceYearly: number | null;
+          stripePriceId: string | null;
+        }) => {
+          const planFeaturesList = await db
             .select({
               featureId: features.id,
               displayName: features.displayName,
@@ -234,7 +251,7 @@ export class PlanService {
 
           return {
             ...plan,
-            features,
+            features: planFeaturesList,
           }
         })
       )

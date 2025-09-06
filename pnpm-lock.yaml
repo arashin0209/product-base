@@ -11,6 +11,12 @@ importers:
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
+      drizzle-orm:
+        specifier: ^0.33.0
+        version: 0.33.0(@types/react@18.3.24)(postgres@3.4.7)(react@19.0.0-rc.0)
+      postgres:
+        specifier: ^3.4.4
+        version: 3.4.7
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.4.8

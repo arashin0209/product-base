@@ -3,10 +3,25 @@ import { createClient } from '@supabase/supabase-js'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { eq } from 'drizzle-orm'
-import { plans, features, planFeatures } from '../../../../../../src/infrastructure/database/schema'
+import { plans, features, planFeatures } from '../../../../../src/infrastructure/database/schema'
+
+// 動的にデータベースURLを構築
+const buildDatabaseUrl = (): string => {
+  const host = process.env.SUPABASE_DB_HOST
+  const port = process.env.SUPABASE_DB_PORT
+  const name = process.env.SUPABASE_DB_NAME
+  const user = process.env.SUPABASE_DB_USER
+  const password = process.env.SUPABASE_DB_PASSWORD
+  
+  if (!host || !port || !name || !user || !password) {
+    throw new Error('Missing required database environment variables')
+  }
+  
+  return `postgresql://${user}:${password}@${host}:${port}/${name}`
+}
 
 // Database connection
-const connectionString = process.env.DATABASE_URL!
+const connectionString = buildDatabaseUrl()
 const client = postgres(connectionString, { prepare: false })
 const db = drizzle(client)
 
@@ -18,11 +33,10 @@ export async function GET(request: NextRequest) {
       .select({
         planId: plans.id,
         planName: plans.name,
-        displayName: plans.displayName,
+        description: plans.description,
         priceMonthly: plans.priceMonthly,
         priceYearly: plans.priceYearly,
-        stripePriceIdMonthly: plans.stripePriceIdMonthly,
-        stripePriceIdYearly: plans.stripePriceIdYearly,
+        stripePriceId: plans.stripePriceId,
         featureId: planFeatures.featureId,
         featureDisplayName: features.displayName,
         enabled: planFeatures.enabled,
@@ -41,11 +55,10 @@ export async function GET(request: NextRequest) {
         acc[planId] = {
           id: row.planId,
           name: row.planName,
-          displayName: row.displayName,
+          description: row.description,
           priceMonthly: row.priceMonthly,
           priceYearly: row.priceYearly,
-          stripePriceIdMonthly: row.stripePriceIdMonthly,
-          stripePriceIdYearly: row.stripePriceIdYearly,
+          stripePriceId: row.stripePriceId,
           features: []
         }
       }

@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { stripe, STRIPE_PRICES } from '../../../lib/stripe'
+import { stripe, STRIPE_PRICES } from '../../../../lib/stripe'
 import { db } from '../../../../../../src/infrastructure/database/connection'
 import { users } from '../../../../../../src/infrastructure/database/schema'
 import { handleAPIError, createSuccessResponse, APIError } from '../../../../../../src/shared/errors'
-import { requireAuth } from '../../../lib/auth'
-import { createServerSupabaseClient } from '../../../lib/supabase'
+import { requireAuth } from '../../../../lib/auth'
+import { createServerSupabaseClient } from '../../../../lib/supabase'
 import { eq } from 'drizzle-orm'
+import { constantsService } from '../../../../../../src/application/constants/constants.service'
 
 const CheckoutSchema = z.object({
   plan_id: z.enum(['gold', 'platinum']),
@@ -19,7 +20,19 @@ export async function POST(request: NextRequest) {
   try {
     const userId = await requireAuth(request)
     const body = await request.json()
-    const { plan_id, billing_cycle, success_url, cancel_url } = CheckoutSchema.parse(body)
+    
+    // 動的バリデーション
+    const planConstants = await constantsService.getPlanConstants()
+    const validPlanIds = planConstants.AVAILABLE_PLAN_IDS.filter(id => id !== planConstants.FREE_PLAN_ID)
+    
+    const DynamicCheckoutSchema = z.object({
+      plan_id: z.enum(validPlanIds as [string, ...string[]]),
+      billing_cycle: z.enum(['monthly', 'yearly']).default('monthly'),
+      success_url: z.string().url().optional(),
+      cancel_url: z.string().url().optional(),
+    })
+    
+    const { plan_id, billing_cycle, success_url, cancel_url } = DynamicCheckoutSchema.parse(body)
     
     // Get user information
     const [user] = await db

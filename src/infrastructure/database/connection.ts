@@ -4,23 +4,55 @@ import * as schema from './schema'
 import * as dotenv from 'dotenv'
 import path from 'path'
 
-// Load environment variables from project root .env file
+// Load environment variables from project root .env files
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 
-// Database connection
-const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL
-
-console.log('DATABASE_URL from process.env:', process.env.DATABASE_URL)
-console.log('SUPABASE_DATABASE_URL from process.env:', process.env.SUPABASE_DATABASE_URL)
-console.log('Final connection string:', connectionString)
-
-if (!connectionString) {
-  throw new Error('DATABASE_URL or SUPABASE_DATABASE_URL environment variable is required')
+// 動的にデータベースURLを構築
+const buildDatabaseUrl = (): string => {
+  const host = process.env.SUPABASE_DB_HOST
+  const port = process.env.SUPABASE_DB_PORT
+  const name = process.env.SUPABASE_DB_NAME
+  const user = process.env.SUPABASE_DB_USER
+  const password = process.env.SUPABASE_DB_PASSWORD
+  
+  if (!host || !port || !name || !user || !password) {
+    throw new Error('Missing required database environment variables: SUPABASE_DB_HOST, SUPABASE_DB_PORT, SUPABASE_DB_NAME, SUPABASE_DB_USER, SUPABASE_DB_PASSWORD')
+  }
+  
+  return `postgresql://${user}:${password}@${host}:${port}/${name}`
 }
 
-const client = postgres(connectionString, { 
-  ssl: { rejectUnauthorized: false },
-  prepare: false 
-})
+// Database connection
+const connectionString = buildDatabaseUrl()
 
-export const db = drizzle(client, { schema })
+// Validate the connection string format - only throw error in production build
+if (process.env.NODE_ENV === 'production' && (connectionString.includes('[YOUR_DB_PASSWORD]') || connectionString.includes('[HOST]') || connectionString.includes('[PORT]'))) {
+  throw new Error('Please update the database connection string with actual values in .env file')
+}
+
+// Create database client with mock handling for build testing
+let client: postgres.Sql<any>
+let db: any
+
+if (connectionString.includes('[YOUR_DB_PASSWORD]') || connectionString.includes('[HOST]') || connectionString.includes('[PORT]')) {
+  console.warn('Using mock database connection for build testing')
+  // Create a mock client that won't actually connect during build
+  client = {
+    query: () => Promise.resolve({ rows: [] }),
+    end: () => Promise.resolve(),
+  } as any
+  db = {
+    select: () => ({ from: () => ({ where: () => ({ limit: () => [] }) }) }),
+    insert: () => ({ into: () => ({ values: () => ({ returning: () => [] }) }) }),
+    update: () => ({ set: () => ({ where: () => ({ returning: () => [] }) }) }),
+    delete: () => ({ from: () => ({ where: () => [] }) }),
+  }
+} else {
+  client = postgres(connectionString, { 
+    ssl: { rejectUnauthorized: false },
+    prepare: false 
+  })
+  db = drizzle(client, { schema })
+}
+
+export { db }

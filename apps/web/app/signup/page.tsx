@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-// Temporary: using HTML elements instead of UI components for testing
+import { Button } from '@product-base/ui'
+import { Input } from '@product-base/ui'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@product-base/ui'
 import { useAuth } from '../hooks/useAuth'
 
 export default function SignUpPage() {
@@ -86,86 +88,82 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Product Base</h1>
-          <p className="text-gray-600">アカウントを作成</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Product Base</h1>
+          <p className="text-muted-foreground">アカウントを作成</p>
         </div>
         
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold">新規登録</h2>
-            <p className="text-gray-600 mt-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>新規登録</CardTitle>
+            <CardDescription>
               無料アカウントを作成してサービスを始めましょう
-            </p>
-          </div>
+            </CardDescription>
+          </CardHeader>
           
-          <div className="space-y-4">
+          <CardContent className="space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                <p className="text-sm text-red-600">{error}</p>
+              <div className="p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">
+                {error}
               </div>
             )}
             
             <form onSubmit={handleSignUp} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
                   お名前
                 </label>
-                <input
+                <Input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
                   disabled={loading}
                   placeholder="田中 太郎"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
                   メールアドレス
                 </label>
-                <input
+                <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={loading}
                   placeholder="your-email@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
                   パスワード
                 </label>
-                <input
+                <Input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={loading}
                   placeholder="8文字以上、英数字混在"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
                   パスワード確認
                 </label>
-                <input
+                <Input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   disabled={loading}
                   placeholder="パスワードを再入力"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                 />
               </div>
               
@@ -175,43 +173,44 @@ export default function SignUpPage() {
                   id="terms"
                   checked={agreeToTerms}
                   onChange={(e) => setAgreeToTerms(e.target.checked)}
-                  className="rounded border-gray-300"
                   disabled={loading}
+                  className="w-4 h-4 text-primary bg-background border-gray-300 rounded focus:ring-primary focus:ring-2"
                 />
-                <label htmlFor="terms" className="text-sm text-gray-700">
-                  <Link href="/terms" className="text-blue-600 hover:underline">
+                <label htmlFor="terms" className="text-sm text-foreground">
+                  <Link href="/terms" className="text-primary hover:underline">
                     利用規約
                   </Link>
                   と
-                  <Link href="/privacy" className="text-blue-600 hover:underline">
+                  <Link href="/privacy" className="text-primary hover:underline">
                     プライバシーポリシー
                   </Link>
                   に同意する
                 </label>
               </div>
               
-              <button
+              <Button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full"
                 disabled={!email || !password || !confirmPassword || !name || !agreeToTerms || loading}
               >
                 {loading ? 'アカウント作成中...' : 'アカウント作成'}
-              </button>
+              </Button>
             </form>
             
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-gray-300" />
+                <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">
+                <span className="bg-background px-2 text-muted-foreground">
                   または
                 </span>
               </div>
             </div>
             
-            <button
-              className="w-full border border-gray-300 bg-white text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            <Button
+              variant="outline"
+              className="w-full"
               onClick={handleGoogleSignUp}
               disabled={loading}
             >
@@ -234,16 +233,16 @@ export default function SignUpPage() {
                 />
               </svg>
               Googleで登録
-            </button>
+            </Button>
             
             <div className="text-center text-sm">
-              <span className="text-gray-500">すでにアカウントをお持ちの場合は </span>
-              <Link href="/login" className="text-blue-600 hover:underline">
+              <span className="text-muted-foreground">すでにアカウントをお持ちの場合は </span>
+              <Link href="/login" className="text-primary hover:underline">
                 ログインはこちら
               </Link>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

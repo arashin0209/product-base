@@ -4,6 +4,7 @@ import { db } from '../../../../../src/infrastructure/database/connection'
 import { users } from '../../../../../src/infrastructure/database/schema'
 import { handleAPIError, createSuccessResponse, APIError } from '../../../../../src/shared/errors'
 import { eq } from 'drizzle-orm'
+import { constantsService } from '../../../../../src/application/constants/constants.service'
 
 // Validation schema based on api-design.md with DEVELOPMENT_NOTES requirements
 const CreateUserSchema = z.object({
@@ -15,11 +16,19 @@ const CreateUserSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('DATABASE_URL:', process.env.DATABASE_URL)
-    console.log('SUPABASE_DATABASE_URL:', process.env.SUPABASE_DATABASE_URL)
     
     const body = await request.json()
-    const { userId, email, name, planType } = CreateUserSchema.parse(body)
+    
+    // 動的バリデーション
+    const planConstants = await constantsService.getPlanConstants()
+    const DynamicCreateUserSchema = z.object({
+      userId: z.string().uuid(),
+      email: z.string().email(),
+      name: z.string().min(1),
+      planType: z.enum(planConstants.AVAILABLE_PLAN_IDS as [string, ...string[]]).optional().default(planConstants.FREE_PLAN_ID)
+    })
+    
+    const { userId, email, name, planType } = DynamicCreateUserSchema.parse(body)
     
     // Check if user already exists
     const existingUser = await db

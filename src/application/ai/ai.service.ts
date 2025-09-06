@@ -3,6 +3,7 @@ import { aiUsageLogs } from '../../infrastructure/database/schema'
 import { PlanService } from '../plan/plan.service'
 import { eq, desc } from 'drizzle-orm'
 import OpenAI from 'openai'
+import { constantsService } from '../constants/constants.service'
 
 export interface AiChatRequest {
   message: string
@@ -41,13 +42,14 @@ export class AiService {
   async chat(userId: string, request: AiChatRequest): Promise<AiChatResponse> {
     try {
       // 機能利用可否チェック
-      const hasAccess = await this.planService.checkFeatureAccess(userId, 'ai_requests')
+      const featureConstants = await constantsService.getFeatureConstants()
+      const hasAccess = await this.planService.checkFeatureAccess(userId, featureConstants.AI_REQUESTS_FEATURE_ID)
       if (!hasAccess) {
         throw new Error('AI機能は有料プランでのみ利用可能です。プランをアップグレードしてください。')
       }
 
       // 使用量制限チェック
-      const usageCheck = await this.planService.checkUsageLimit(userId, 'ai_requests')
+      const usageCheck = await this.planService.checkUsageLimit(userId, featureConstants.AI_REQUESTS_FEATURE_ID)
       if (!usageCheck.allowed) {
         throw new Error(`AI機能の利用上限に達しました。制限: ${usageCheck.limit}回/月、現在の使用量: ${usageCheck.current}回`)
       }
@@ -104,7 +106,8 @@ export class AiService {
   // 使用量統計取得
   async getUsageStats(userId: string): Promise<UsageStats> {
     try {
-      const usageCheck = await this.planService.checkUsageLimit(userId, 'ai_requests')
+      const featureConstants = await constantsService.getFeatureConstants()
+      const usageCheck = await this.planService.checkUsageLimit(userId, featureConstants.AI_REQUESTS_FEATURE_ID)
       
       return {
         currentUsage: usageCheck.current,

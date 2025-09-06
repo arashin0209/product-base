@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '../../../../../../src/infrastructure/database/connection'
 import { users } from '../../../../../../src/infrastructure/database/schema'
 import { requireAuth } from '../../../lib/auth'
+import { constantsService } from '../../../../../../src/application/constants/constants.service'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,6 +14,7 @@ const supabase = createClient(
 export async function GET(request: NextRequest) {
   try {
     const userId = await requireAuth(request)
+    const defaultPlanId = await constantsService.getDefaultPlanId()
     
     // Get user from Supabase auth
     const { data: { user: authUser } } = await supabase.auth.getUser(
@@ -42,8 +44,8 @@ export async function GET(request: NextRequest) {
         id: authUser.id,
         email: authUser.email || '',
         name: user?.name || authUser.user_metadata?.full_name || '',
-        plan_id: user?.planType || 'free',
-        plan_name: user?.planType || 'free',
+        plan_id: user?.planType || defaultPlanId,
+        plan_name: user?.planType || defaultPlanId,
         stripe_customer_id: user?.stripeCustomerId || null,
         created_at: authUser.created_at,
         updated_at: authUser.updated_at,

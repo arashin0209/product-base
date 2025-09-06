@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { stripe } from '../../../lib/stripe'
+import { stripe } from '../../../../lib/stripe'
 import { db } from '../../../../../../src/infrastructure/database/connection'
 import { users, userSubscriptions } from '../../../../../../src/infrastructure/database/schema'
 import { handleAPIError } from '../../../../../../src/shared/errors'
