@@ -5,12 +5,12 @@ import { sql } from 'drizzle-orm'
 export const plans = pgTable('plans', {
   id: varchar('id', { length: 50 }).primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
-  description: text('description').notNull(),
+  displayName: varchar('display_name', { length: 100 }).notNull(),
   priceMonthly: decimal('price_monthly', { precision: 10, scale: 2 }),
   priceYearly: decimal('price_yearly', { precision: 10, scale: 2 }),
-  stripePriceId: varchar('stripe_price_id', { length: 255 }),
-  active: boolean('active').default(true),
-  limits: text('limits').$type<Record<string, any>>().default({}),
+  stripePriceIdMonthly: varchar('stripe_price_id_monthly', { length: 100 }),
+  stripePriceIdYearly: varchar('stripe_price_id_yearly', { length: 100 }),
+  isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp('updated_at', { withTimezone: true }).default(sql`now()`),
 })
@@ -42,12 +42,9 @@ export const planFeatures = pgTable('plan_features', {
 // Users table - updated to match actual database structure
 export const users = pgTable('users', {
   id: uuid('id').primaryKey(), // auth.users.id と同じ値
-  email: varchar('email', { length: 255 }).notNull(),
-  name: varchar('name', { length: 100 }),
-  planType: varchar('plan_type', { length: 50 }).default('free'),
-  planStatus: varchar('plan_status', { length: 50 }).default('active'),
-  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
-  stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }),
+  name: varchar('name', { length: 100 }).notNull(),
+  planId: varchar('plan_id', { length: 50 }).default('free').notNull(),
+  stripeCustomerId: varchar('stripe_customer_id', { length: 100 }),
   createdAt: timestamp('created_at', { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp('updated_at', { withTimezone: true }).default(sql`now()`),
 })
@@ -110,7 +107,7 @@ export type InsertAiUsageLog = typeof aiUsageLogs.$inferInsert
  *    - PlanService でプラン別機能制御を実装済み
  * 
  * 2. 【ユーザー管理】  
- *    - auth.users.plan_type: ✅ 実際のプラン情報保存
+ *    - auth.users.plan_id: ✅ 実際のプラン情報保存
  *    - users テーブル: ⚠️ 将来拡張用（現在未使用）
  *    - 理由: Supabase認証との統合性を重視
  *

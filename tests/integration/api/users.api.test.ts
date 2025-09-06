@@ -60,7 +60,7 @@ describe('Users API', () => {
           userId: 'user-123',
           email: 'test@example.com',
           name: 'Test User',
-          planType: 'free'
+          planId: 'free'
         })
       })
 
@@ -73,7 +73,7 @@ describe('Users API', () => {
         id: 'user-123',
         email: 'test@example.com',
         name: 'Test User',
-        planType: 'free'
+        planId: 'free'
       })
     })
 

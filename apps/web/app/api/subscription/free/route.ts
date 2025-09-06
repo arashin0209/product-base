@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const userId = await requireAuth(request)
     
     // Update user to free plan
-    await db.transaction(async (tx) => {
+    await db.transaction(async (tx: any) => {
       // Update user's plan
       await tx
         .update(users)

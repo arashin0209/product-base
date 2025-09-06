@@ -38,15 +38,26 @@ export async function GET(request: NextRequest) {
       .where(eq(users.id, userId))
       .limit(1)
     
+    // If user doesn't exist in our database, return 404
+    if (!user) {
+      return NextResponse.json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'ユーザーレコードが見つかりません'
+        }
+      }, { status: 404 })
+    }
+    
     return NextResponse.json({
       success: true,
       data: {
         id: authUser.id,
         email: authUser.email || '',
-        name: user?.name || authUser.user_metadata?.full_name || '',
-        plan_id: user?.planType || defaultPlanId,
-        plan_name: user?.planType || defaultPlanId,
-        stripe_customer_id: user?.stripeCustomerId || null,
+        name: user.name || authUser.user_metadata?.full_name || '',
+        plan_id: user.planId || defaultPlanId,
+        plan_name: user.planId || defaultPlanId,
+        stripe_customer_id: user.stripeCustomerId || null,
         created_at: authUser.created_at,
         updated_at: authUser.updated_at,
       }

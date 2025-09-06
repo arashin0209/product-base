@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
     // 一時的にバイパスしてチャット機能の動作確認
     // Check if user has AI feature access
     // const userPlanResult = await db.execute(sql`
-    //   SELECT u.plan_type as plan_id, pf.enabled, pf.limit_value
+    //   SELECT u.plan_id as plan_id, pf.enabled, pf.limit_value
     //   FROM auth.users u
-    //   INNER JOIN plan_features pf ON pf.plan_id = u.plan_type AND pf.feature_id = 'ai_requests'
+    //   INNER JOIN plan_features pf ON pf.plan_id = u.plan_id AND pf.feature_id = 'ai_requests'
     //   WHERE u.id = ${userId}
     //   LIMIT 1
     // `)

@@ -812,7 +812,7 @@ const CreateUserSchema = z.object({
   userId: z.string().uuid(),
   email: z.string().email(),
   name: z.string().min(1),
-  planType: z.enum(['free', 'gold', 'platinum']).optional()
+  planId: z.enum(['free', 'gold', 'platinum']).optional()
 });
 
 type CreateUserData = z.infer<typeof CreateUserSchema>;

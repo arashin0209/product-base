@@ -87,7 +87,31 @@ export const useAuth = () => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
+        }
+      })
+      
+      if (error) throw error
+      return { data, error: null }
+    } catch (error: any) {
+      return { data: null, error }
+    }
+  }
+
+  const signUpWithGoogle = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
         }
       })
       
@@ -109,6 +133,7 @@ export const useAuth = () => {
     signUp,
     signIn,
     signInWithGoogle,
+    signUpWithGoogle,
     signOut,
   }
 }

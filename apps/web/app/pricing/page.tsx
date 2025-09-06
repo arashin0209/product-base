@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../hooks/useAuth'
+import { supabase } from '../../lib/supabase'
 import { Button } from '@product-base/ui'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@product-base/ui'
 import { Check, X } from 'lucide-react'
@@ -30,11 +31,81 @@ export default function PricingPage() {
   const router = useRouter()
   const [plans, setPlans] = useState<Plan[]>([])
   const [loadingPlans, setLoadingPlans] = useState(true)
+  const [currentPlanId, setCurrentPlanId] = useState<string | null>(null)
+  const [planInfo, setPlanInfo] = useState<{
+    planId: string
+    planName: string
+    displayName: string
+    features: Array<{
+      featureId: string
+      displayName: string
+      enabled: boolean
+      limitValue?: number | null
+    }>
+  } | null>(null)
+  const [allPlans, setAllPlans] = useState<Array<{
+    id: string
+    name: string
+    description: string
+    priceMonthly: string | null
+    priceYearly: string | null
+    stripePriceId: string | null
+    features: Array<{
+      featureId: string
+      displayName: string
+      enabled: boolean
+      limitValue: number | null
+    }>
+  }>>([])
 
   useEffect(() => {
-    // 一時的に認証をバイパスしてテスト
-    fetchPlans()
-  }, [])
+    if (!loading) {
+      if (user) {
+        fetchUserPlanInfo()
+      } else {
+        // 認証されていない場合は無料プランとして設定
+        setPlanInfo({
+          planId: 'free',
+          planName: '無料プラン',
+          displayName: '無料プラン',
+          features: []
+        })
+        setCurrentPlanId('free')
+      }
+      fetchPlans()
+    }
+  }, [user, loading])
+
+  const fetchUserPlanInfo = async () => {
+    try {
+      // Supabaseから認証トークンを取得
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        console.log('No access token available')
+        return
+      }
+
+      const response = await fetch('/api/users/me/plan', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('User plan info response:', data)
+        if (data.success && data.data) {
+          setCurrentPlanId(data.data.planId)
+          setPlanInfo(data.data)
+        }
+      } else {
+        console.log('User plan info response failed:', response.status, response.statusText)
+      }
+    } catch (error) {
+      console.error('Failed to fetch user plan info:', error)
+    }
+  }
 
   const fetchPlans = async () => {
     try {
@@ -43,116 +114,16 @@ export default function PricingPage() {
       if (response.ok) {
         const data = await response.json()
         setPlans(data.data || [])
+        setAllPlans(data.data || [])
       } else {
-        // フォールバック用のデフォルトプラン
-        setPlans([
-          {
-            id: 'free',
-            name: '無料プラン',
-            description: '基本的な機能を無料で利用',
-            priceMonthly: 0,
-            priceYearly: 0,
-            stripePriceId: null,
-            features: [
-              {
-                featureId: 'basic_features',
-                displayName: '基本的な機能',
-                enabled: true,
-                limitValue: null
-              }
-            ],
-            current: true
-          },
-          {
-            id: 'gold',
-            name: 'Goldプラン',
-            description: 'AI機能と高度な機能を利用',
-            priceMonthly: 980,
-            priceYearly: 9800,
-            stripePriceId: 'price_1S41LECirsKNr4lIr1M7MFAV',
-            features: [
-              {
-                featureId: 'ai_requests',
-                displayName: 'AI機能',
-                enabled: true,
-                limitValue: 1000
-              }
-            ],
-            popular: true
-          },
-          {
-            id: 'platinum',
-            name: 'プラチナプラン',
-            description: '全機能を無制限で利用',
-            priceMonthly: 2980,
-            priceYearly: 29800,
-            stripePriceId: 'price_1S41J4CirsKNr4lIdYRmtcPP',
-            features: [
-              {
-                featureId: 'ai_requests',
-                displayName: 'AI機能',
-                enabled: true,
-                limitValue: null
-              }
-            ]
-          }
-        ])
+        console.error('プラン取得エラー:', response.status, response.statusText)
+        setPlans([])
+        setAllPlans([])
       }
     } catch (error) {
       console.error('プラン取得エラー:', error)
-      // エラー時もデフォルトプランを表示
-      setPlans([
-        {
-          id: 'free',
-          name: '無料プラン',
-          description: '基本的な機能を無料で利用',
-          priceMonthly: 0,
-          priceYearly: 0,
-          stripePriceId: null,
-          features: [
-            {
-              featureId: 'basic_features',
-              displayName: '基本的な機能',
-              enabled: true,
-              limitValue: null
-            }
-          ],
-          current: true
-        },
-        {
-          id: 'gold',
-          name: 'Goldプラン',
-          description: 'AI機能と高度な機能を利用',
-          priceMonthly: 980,
-          priceYearly: 9800,
-          stripePriceId: 'price_1S3cBKCirsKNr4lIff9saDMa',
-          features: [
-            {
-              featureId: 'ai_requests',
-              displayName: 'AI機能',
-              enabled: true,
-              limitValue: 1000
-            }
-          ],
-          popular: true
-        },
-        {
-          id: 'platinum',
-          name: 'プラチナプラン',
-          description: '全機能を無制限で利用',
-          priceMonthly: 2980,
-          priceYearly: 29800,
-          stripePriceId: 'price_1S41J4CirsKNr4lIdYRmtcPP',
-          features: [
-            {
-              featureId: 'ai_requests',
-              displayName: 'AI機能',
-              enabled: true,
-              limitValue: null
-            }
-          ]
-        }
-      ])
+      setPlans([])
+      setAllPlans([])
     } finally {
       setLoadingPlans(false)
     }
@@ -202,7 +173,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppHeader />
+      <AppHeader planInfo={planInfo} allPlans={allPlans} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">プラン選択</h1>
@@ -212,17 +183,28 @@ export default function PricingPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {plans.map((plan) => (
+          {plans.length > 0 ? (
+            plans.map((plan) => {
+              const isCurrentPlan = currentPlanId === plan.id
+              return (
             <Card
               key={plan.id}
               className={`relative ${
                 plan.popular ? 'ring-2 ring-primary shadow-lg' : ''
-              } ${plan.current ? 'bg-primary/5' : ''}`}
+              } ${isCurrentPlan ? 'bg-blue-100 border-blue-300' : ''}`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                   <div className="bg-primary text-white px-4 py-1 rounded-full text-sm font-medium">
                     人気
+                  </div>
+                </div>
+              )}
+              
+              {isCurrentPlan && (
+                <div className="absolute -top-4 right-4">
+                  <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                    現在のプラン
                   </div>
                 </div>
               )}
@@ -233,7 +215,7 @@ export default function PricingPage() {
                   {plan.description}
                 </CardDescription>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">¥{plan.priceMonthly.toLocaleString()}</span>
+                  <span className="text-4xl font-bold">¥{Math.floor(plan.priceMonthly).toLocaleString()}</span>
                   <span className="text-gray-600">/月</span>
                 </div>
               </CardHeader>
@@ -258,17 +240,30 @@ export default function PricingPage() {
               </CardContent>
 
               <CardFooter>
-                <Button
-                  className="w-full"
-                  variant={plan.popular ? 'default' : 'outline'}
-                  onClick={() => handleSelectPlan(plan)}
-                  disabled={plan.current}
-                >
-                  {plan.current ? '現在のプラン' : 'プランを選択'}
-                </Button>
+                {isCurrentPlan ? (
+                  <div className="w-full text-center py-2 text-gray-500 font-medium">
+                    現在のプラン
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full bg-black text-white hover:bg-gray-800"
+                    onClick={() => handleSelectPlan(plan)}
+                  >
+                    プランを選択
+                  </Button>
+                )}
               </CardFooter>
             </Card>
-          ))}
+              )
+            })
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <div className="text-gray-500">
+                <p className="text-lg font-medium mb-2">プラン情報を読み込み中...</p>
+                <p className="text-sm">しばらくお待ちください</p>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

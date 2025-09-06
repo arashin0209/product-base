@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@product-base/ui'
 import { Input } from '@product-base/ui'
@@ -16,6 +16,28 @@ export default function LoginPage() {
   
   const { signIn, signInWithGoogle } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    // URLパラメータからエラーメッセージを取得
+    const errorParam = searchParams.get('error')
+    const errorCode = searchParams.get('error_code')
+    const errorDescription = searchParams.get('error_description')
+    
+    if (errorParam) {
+      let errorMessage = '認証エラーが発生しました'
+      
+      if (errorCode === 'unexpected_failure' && errorDescription?.includes('Database error')) {
+        errorMessage = 'データベースエラーが発生しました。しばらく時間をおいてから再度お試しください。'
+      } else if (errorCode === 'server_error') {
+        errorMessage = 'サーバーエラーが発生しました。しばらく時間をおいてから再度お試しください。'
+      } else if (errorDescription) {
+        errorMessage = decodeURIComponent(errorDescription)
+      }
+      
+      setError(errorMessage)
+    }
+  }, [searchParams])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()

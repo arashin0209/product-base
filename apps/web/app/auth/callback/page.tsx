@@ -11,49 +11,59 @@ function AuthCallbackContent() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession()
+        console.log('Auth callback: Starting authentication check')
+        console.log('Auth callback: URL params:', searchParams.toString())
+        
+        // URLパラメータからエラーをチェック
+        const error = searchParams.get('error')
+        const errorCode = searchParams.get('error_code')
+        const errorDescription = searchParams.get('error_description')
         
         if (error) {
-          console.error('Auth callback error:', error)
+          console.error('Auth callback error from URL:', { error, errorCode, errorDescription })
+          router.push(`/login?error=${error}&error_code=${errorCode}&error_description=${errorDescription}`)
+          return
+        }
+        
+        // OAuth認証の場合は、まずURLパラメータを処理
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError) {
+          console.error('Auth callback session error:', sessionError)
           router.push('/login?error=auth_callback_failed')
           return
         }
 
-        if (data.session?.user) {
-          // For Google OAuth, check if user record exists, create if not
-          const userResponse = await fetch('/api/users/me', {
-            headers: {
-              'Authorization': `Bearer ${data.session.access_token}`,
-            },
-          })
-
-          if (userResponse.status === 404) {
-            // User record doesn't exist, create it
-            const createResponse = await fetch('/api/users', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                userId: data.session.user.id,
-                email: data.session.user.email,
-                name: data.session.user.user_metadata?.full_name || 
-                      data.session.user.user_metadata?.name || 
-                      data.session.user.email?.split('@')[0] || 
-                      'User',
-              }),
-            })
-
-            if (!createResponse.ok) {
-              console.error('Failed to create user record')
-              router.push('/login?error=user_creation_failed')
+        if (session?.user) {
+          console.log('Auth callback: User authenticated', session.user.email)
+          
+          // Database Triggerで自動的にユーザーレコードが作成されるため、
+          // 少し待ってからダッシュボードにリダイレクト
+          console.log('Auth callback: Waiting for Database Trigger to create user record')
+          setTimeout(() => {
+            console.log('Auth callback: Redirecting to dashboard')
+            router.push('/dashboard')
+          }, 2000) // 2秒待機（Database Triggerの処理時間を考慮）
+        } else {
+          // セッションがない場合は、少し待ってから再試行
+          console.log('Auth callback: No user session, retrying...')
+          setTimeout(async () => {
+            const { data: { session: retrySession }, error: retryError } = await supabase.auth.getSession()
+            
+            if (retryError) {
+              console.error('Auth callback retry error:', retryError)
+              router.push('/login?error=auth_callback_failed')
               return
             }
-          }
 
-          router.push('/dashboard')
-        } else {
-          router.push('/login')
+            if (retrySession?.user) {
+              console.log('Auth callback retry: User authenticated', retrySession.user.email)
+              router.push('/dashboard')
+            } else {
+              console.log('Auth callback retry: Still no user session')
+              router.push('/login?error=no_session')
+            }
+          }, 1000)
         }
       } catch (error) {
         console.error('Auth callback error:', error)
@@ -64,6 +74,7 @@ function AuthCallbackContent() {
     handleAuthCallback()
   }, [router, searchParams])
 
+  // 認証処理中
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">

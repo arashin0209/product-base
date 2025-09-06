@@ -10,7 +10,7 @@ export default {
   dialect: 'postgresql',
   dbCredentials: {
     // マイグレーション用は Direct Connection を使用
-    url: process.env.SUPABASE_DIRECT_URL!,
+    url: process.env.SUPABASE_DATABASE_URL!,
   },
   verbose: true,
   strict: true,

@@ -813,7 +813,7 @@ curl -X POST http://localhost:3000/api/ai/openai \
 
 ### 既存テーブル (Supabase auth スキーマ)
 - `auth.users` - Supabase認証ユーザー情報
-  - 既存カラム: `plan_type` (varchar, default 'free'), `stripe_customer_id` (varchar)
+  - 既存カラム: `plan_id` (varchar, default 'free'), `stripe_customer_id` (varchar)
 
 ### 追加テーブル (public スキーマ)
 - `plans` - サブスクリプションプラン情報
@@ -832,7 +832,7 @@ curl -X POST http://localhost:3000/api/ai/openai \
 
 #### 1. 既存テーブル構造の確認の重要性
 - **問題**: 新しいスキーマ設計と既存テーブル構造の不一致
-- **発生箇所**: `auth.users`テーブルには既に`plan_type`, `stripe_customer_id`カラムが存在
+- **発生箇所**: `auth.users`テーブルには既に`plan_id`, `stripe_customer_id`カラムが存在
 - **解決策**: `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'users'` で構造確認
 - **教訓**: Drizzleマイグレーション実行前に、必ず既存のテーブル構造を確認する
 
@@ -1331,7 +1331,7 @@ Database error: {
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "email": "test@example.com", 
     "name": "Test User",
-    "planType": "free",
+    "planId": "free",
     "createdAt": "2025-09-04T10:14:53.869244+00:00"
   }
 }

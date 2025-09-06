@@ -215,7 +215,7 @@ interface CreateUserRequest {
   userId: string; // 【必須】Supabase auth.users.id
   email: string;
   name: string;
-  planType?: 'free' | 'gold' | 'platinum';
+  planId?: 'free' | 'gold' | 'platinum';
 }
 ```
 

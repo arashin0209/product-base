@@ -314,7 +314,7 @@ SELECT
     u.id,
     u.email,
     u.name,
-    u.plan_type,
+    u.plan_id,
     u.plan_status,
     p.display_name as plan_display_name,
     p.price_monthly,
@@ -323,7 +323,7 @@ SELECT
     us.trial_end,
     us.cancel_at_period_end
 FROM users u
-LEFT JOIN plans p ON u.plan_type = p.id
+LEFT JOIN plans p ON u.plan_id = p.id
 LEFT JOIN user_subscriptions us ON u.id = us.user_id 
     AND us.status IN ('active', 'trialing');
 ```
@@ -335,14 +335,14 @@ CREATE VIEW user_feature_access AS
 SELECT 
     u.id as user_id,
     u.email,
-    u.plan_type,
+    u.plan_id,
     f.id as feature_id,
     f.display_name as feature_name,
     pf.enabled,
     pf.limit_value
 FROM users u
 CROSS JOIN features f
-LEFT JOIN plan_features pf ON u.plan_type = pf.plan_id AND f.id = pf.feature_id
+LEFT JOIN plan_features pf ON u.plan_id = pf.plan_id AND f.id = pf.feature_id
 WHERE f.is_active = true;
 ```
 
@@ -400,15 +400,15 @@ CREATE OR REPLACE FUNCTION check_plan_change_consistency()
 RETURNS TRIGGER AS $$
 BEGIN
     -- プラン変更時にサブスクリプションテーブルとの整合性をチェック
-    IF NEW.plan_type != OLD.plan_type THEN
+    IF NEW.plan_id != OLD.plan_id THEN
         -- プラン変更ログを記録（必要に応じて）
         INSERT INTO audit_logs (table_name, record_id, action, old_values, new_values)
         VALUES (
             'users', 
             NEW.id, 
             'plan_change',
-            jsonb_build_object('plan_type', OLD.plan_type),
-            jsonb_build_object('plan_type', NEW.plan_type)
+            jsonb_build_object('plan_id', OLD.plan_id),
+            jsonb_build_object('plan_id', NEW.plan_id)
         );
     END IF;
     
@@ -419,7 +419,7 @@ $$ language 'plpgsql';
 CREATE TRIGGER check_user_plan_change 
     BEFORE UPDATE ON users 
     FOR EACH ROW 
-    WHEN (OLD.plan_type != NEW.plan_type)
+    WHEN (OLD.plan_id != NEW.plan_id)
     EXECUTE FUNCTION check_plan_change_consistency();
 ```
 
@@ -480,7 +480,7 @@ GRANT SELECT, INSERT ON ai_usage_logs TO app_user;
 
 ```sql
 -- 複合インデックス
-CREATE INDEX idx_users_plan_status ON users(plan_type, plan_status);
+CREATE INDEX idx_users_plan_status ON users(plan_id, plan_status);
 CREATE INDEX idx_ai_usage_user_date ON ai_usage_logs(user_id, created_at DESC);
 CREATE INDEX idx_subscriptions_active ON user_subscriptions(user_id, status) 
     WHERE status IN ('active', 'trialing');
@@ -692,7 +692,7 @@ CREATE TABLE users (
 
 -- 実際の既存構造 (auth.users)
 {
-  "plan_type": "varchar", -- plan_id ではなく plan_type
+  "plan_id": "varchar", -- プランID
   "stripe_customer_id": "varchar" -- 既に存在
 }
 ```
@@ -745,7 +745,7 @@ SELECT 'plan_features', COUNT(*), CASE WHEN COUNT(*) >= 15 THEN 'OK' ELSE 'MISSI
 ## 11. 実装時の重要な考慮事項
 
 ### 11.1 既存システムとの統合
-- **auth.usersテーブルとの併用**: 既存のplan_type, stripe_customer_idカラムを活用
+- **auth.usersテーブルとの併用**: 既存のplan_id, stripe_customer_idカラムを活用
 - **サービスクラスでの統合**: PlanService, AiServiceでauth.usersテーブル参照
 - **APIエンドポイントでの対応**: 既存構造に合わせたクエリ修正が必要
 
@@ -909,13 +909,13 @@ ORDER BY pf.plan_id, pf.feature_id;
 #### サービス層の統合
 ```typescript
 // ✅ 動作確認済み：既存auth.usersとの統合
-// PlanService内でauth.usersのplan_typeカラムを参照
+// PlanService内でauth.usersのplan_idカラムを参照
 const userResult = await db.execute(sql`
   SELECT 
-    u.plan_type as plan_id,
+    u.plan_id as plan_id,
     p.name as plan_name
   FROM auth.users u
-  LEFT JOIN plans p ON u.plan_type = p.id  
+  LEFT JOIN plans p ON u.plan_id = p.id
   WHERE u.id = ${userId}
 `);
 ```

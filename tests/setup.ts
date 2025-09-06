@@ -25,7 +25,7 @@ export const server = setupServer(
         id: 'mock-user-id',
         email: 'test@example.com',
         name: 'Test User',
-        planType: 'free',
+        planId: 'free',
       }
     })
   }),

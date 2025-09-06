@@ -63,6 +63,53 @@
 | 更新日 | Renewal Date | 次回課金予定日 |
 | キャンセル予定日 | Cancellation Date | キャンセル実行予定日 |
 
+### Stripeサブスクリプション複合ステータス対応表
+
+| Stripe Status | cancel_at_period_end | 日本語表示 | システム内での扱い | 説明 |
+|---------------|---------------------|------------|-------------------|------|
+| `incomplete` | - | 支払い確認中 | 機能制限 | 初回決済処理中・未完了 |
+| `incomplete_expired` | - | 支払い期限切れ | プラン変更不可 | 決済期限超過で契約終了 |
+| `trialing` | false | 無料トライアル中 | 全機能利用可 | トライアル期間中の有効状態 |
+| `trialing` | true | トライアル中（解約予約） | 全機能利用可・更新停止 | トライアル終了後に解約 |
+| `active` | false | 利用中 | 全機能利用可 | 正常な契約・決済済み状態 |
+| `active` | true | 利用中（解約予約） | 全機能利用可・更新停止 | 期間終了時に解約予定 |
+| `past_due` | - | 支払い遅延 | 機能制限警告 | 決済失敗・再試行期間中 |
+| `canceled` | - | 解約済み | 基本機能のみ | 契約終了・即時機能停止 |
+| `unpaid` | - | 未払い停止 | 機能停止 | 継続的決済失敗・機能停止 |
+
+**実装での使用例:**
+```typescript
+// 複合ステータス判定での日本語表示
+const getStatusDisplay = (subscription: {
+  status: string;
+  cancel_at_period_end: boolean;
+  current_period_end: string;
+}): string => {
+  const { status, cancel_at_period_end } = subscription;
+  
+  if (status === 'active' && cancel_at_period_end) {
+    return `利用中（${formatDate(subscription.current_period_end)}に解約予定）`;
+  }
+  if (status === 'trialing' && cancel_at_period_end) {
+    return 'トライアル中（解約予約）';
+  }
+  
+  const statusMap = {
+    'incomplete': '支払い確認中',
+    'trialing': '無料トライアル中', 
+    'active': '利用中',
+    'canceled': '解約済み'
+  };
+  return statusMap[status] || status;
+};
+
+// 機能制限判定
+const canAccessPaidFeatures = (subscription: any): boolean => {
+  return ['active', 'trialing'].includes(subscription.status);
+  // cancel_at_period_end=trueでも期間中は機能利用可能
+};
+```
+
 ## 5. 決済管理ドメイン (Payment Management Domain)
 
 | 日本語 | 英語 | 説明 |

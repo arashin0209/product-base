@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       .select({
         userId: users.id,
         planId: users.planId,
-        planName: plans.displayName,
+        planName: plans.name,
       })
       .from(users)
       .innerJoin(plans, eq(users.planId, plans.id))

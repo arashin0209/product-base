@@ -11,7 +11,7 @@ const CreateUserSchema = z.object({
   userId: z.string().uuid(), // REQUIRED: Supabase auth.users.id
   email: z.string().email(),
   name: z.string().min(1),
-  planType: z.enum(['free', 'gold', 'platinum']).optional().default('free')
+  planId: z.enum(['free', 'gold', 'platinum']).optional().default('free')
 })
 
 export async function POST(request: NextRequest) {
@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
       userId: z.string().uuid(),
       email: z.string().email(),
       name: z.string().min(1),
-      planType: z.enum(planConstants.AVAILABLE_PLAN_IDS as [string, ...string[]]).optional().default(planConstants.FREE_PLAN_ID)
+      planId: z.enum(planConstants.AVAILABLE_PLAN_IDS as [string, ...string[]]).optional().default(planConstants.FREE_PLAN_ID)
     })
     
-    const { userId, email, name, planType } = DynamicCreateUserSchema.parse(body)
+    const { userId, email, name, planId } = DynamicCreateUserSchema.parse(body)
     
     // Check if user already exists
     const existingUser = await db
@@ -46,19 +46,15 @@ export async function POST(request: NextRequest) {
       .insert(users)
       .values({
         id: userId, // Critical: use auth.users.id from Supabase
-        email,
         name,
-        planType: planType, // Will use default 'free' if not provided
-        planStatus: 'active', // Will use default 'active'
+        planId: planId, // Will use default 'free' if not provided
       })
       .returning()
     
     return Response.json(createSuccessResponse({
       id: newUser.id,
-      email: newUser.email,
       name: newUser.name,
-      planType: newUser.planType,
-      planStatus: newUser.planStatus,
+      planId: newUser.planId,
       createdAt: newUser.createdAt,
       updatedAt: newUser.updatedAt,
     }))

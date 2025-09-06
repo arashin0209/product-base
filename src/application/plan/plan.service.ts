@@ -27,19 +27,24 @@ export class PlanService {
   // ユーザーの現在のプラン情報を取得  
   async getUserPlanInfo(userId: string): Promise<UserPlanInfo | null> {
     try {
-      // usersテーブルからplan_typeを取得
+      // public.usersテーブルからplan_idを取得
       const userResult = await db
         .select({
-          planId: users.planType,
+          planId: users.planId,
           planName: plans.name,
-          displayName: plans.name, // displayNameカラムがないのでnameを使用
+          displayName: plans.displayName,
         })
         .from(users)
-        .leftJoin(plans, eq(users.planType, plans.id))
+        .leftJoin(plans, eq(users.planId, plans.id))
         .where(eq(users.id, userId))
         .limit(1)
 
-      if (!userResult.length) return null
+      if (!userResult.length) {
+        // Database Triggerで自動的にユーザーレコードが作成されるため、
+        // ユーザーが存在しない場合はnullを返す
+        console.log('User not found in public.users, Database Trigger should have created it')
+        return null
+      }
 
       const user = userResult[0]
 
@@ -118,6 +123,11 @@ export class PlanService {
 
     } catch (error) {
       console.error('Error fetching user plan info:', error)
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        userId
+      })
       throw new Error('プラン情報の取得に失敗しました')
     }
   }
@@ -130,7 +140,7 @@ export class PlanService {
           enabled: planFeatures.enabled,
         })
         .from(users)
-        .innerJoin(planFeatures, eq(planFeatures.planId, users.planType))
+        .innerJoin(planFeatures, eq(planFeatures.planId, users.planId))
         .innerJoin(features, eq(features.id, planFeatures.featureId))
         .where(and(
           eq(users.id, userId),
@@ -156,7 +166,7 @@ export class PlanService {
           enabled: planFeatures.enabled,
         })
         .from(users)
-        .innerJoin(planFeatures, eq(planFeatures.planId, users.planType))
+        .innerJoin(planFeatures, eq(planFeatures.planId, users.planId))
         .where(and(
           eq(users.id, userId),
           eq(planFeatures.featureId, featureId)
@@ -218,10 +228,10 @@ export class PlanService {
           description: plans.description,
           priceMonthly: plans.priceMonthly,
           priceYearly: plans.priceYearly,
-          stripePriceId: plans.stripePriceId,
+          stripePriceId: plans.stripePriceIdMonthly,
         })
         .from(plans)
-        .where(eq(plans.active, true))
+        .where(eq(plans.isActive, true))
         .orderBy(plans.priceMonthly)
 
       // 各プランの機能を取得
@@ -270,19 +280,19 @@ export class PlanService {
       const planExists = await db
         .select({ id: plans.id })
         .from(plans)
-        .where(and(eq(plans.id, newPlanId), eq(plans.active, true)))
+        .where(and(eq(plans.id, newPlanId), eq(plans.isActive, true)))
         .limit(1)
 
       if (!planExists.length) {
         throw new Error('指定されたプランが存在しません')
       }
 
-      // usersテーブルのplanTypeを更新
+      // public.usersテーブルのplan_idを更新
       await db
         .update(users)
         .set({ 
-          planType: newPlanId,
-          updatedAt: new Date()
+          planId: newPlanId, 
+          updatedAt: new Date() 
         })
         .where(eq(users.id, userId))
 

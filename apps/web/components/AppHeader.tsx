@@ -55,10 +55,62 @@ export default function AppHeader({ planInfo, allPlans = [] }: AppHeaderProps) {
   const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
+  // プラン階層の定義（数値が大きいほど上位プラン）
+  const planHierarchy: { [key: string]: number } = {
+    'free': 0,
+    'gold': 1,
+    'platinum': 2
+  }
+
+  // 現在のプランより高いプランのみをフィルタリング
+  const getUpgradeablePlans = () => {
+    if (!planInfo) return allPlans.filter(plan => plan.id !== 'free')
+    
+    const currentPlanLevel = planHierarchy[planInfo.planId] || 0
+    return allPlans.filter(plan => {
+      const planLevel = planHierarchy[plan.id] || 0
+      return planLevel > currentPlanLevel
+    })
+  }
+
+  const upgradeablePlans = getUpgradeablePlans()
+  const isPlatinumUser = planInfo?.planId === 'platinum'
+
   const handleSignOut = async () => {
     const { error } = await signOut()
     if (!error) {
       router.push('/login')
+    }
+  }
+
+  const handlePlanChange = async (planId: string) => {
+    if (planId === 'free') {
+      // 無料プランは既に選択済み
+      return
+    }
+
+    try {
+      const response = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          priceId: allPlans.find(p => p.id === planId)?.stripePriceId,
+          planId: planId
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.url) {
+          window.location.href = data.url
+        }
+      } else {
+        console.error('Checkout作成エラー')
+      }
+    } catch (error) {
+      console.error('プラン選択エラー:', error)
     }
   }
 
@@ -83,12 +135,10 @@ export default function AppHeader({ planInfo, allPlans = [] }: AppHeaderProps) {
                   <div className="flex items-center space-x-2">
                     <User className="h-5 w-5" />
                     <div>
-                      <p className="font-medium">{user?.email}</p>
-                      {planInfo && (
-                        <p className="text-sm text-muted-foreground">
-                          プラン: {planInfo.displayName}
-                        </p>
-                      )}
+                      <p className="font-medium">{user?.email || 'ゲストユーザー'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        プラン: {planInfo?.displayName || '無料プラン'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -175,61 +225,67 @@ export default function AppHeader({ planInfo, allPlans = [] }: AppHeaderProps) {
           </Sheet>
 
           {/* Plan Selection Dropdown - Near Hamburger Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 px-2 justify-between hover:bg-transparent">
-                <span className="flex items-center text-sm font-medium">
-                  {planInfo ? planInfo.displayName : 'Product Base'}
-                </span>
-                <ChevronDown className="h-4 w-4 ml-1" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-80">
-              <DropdownMenuLabel>プランを選択</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {allPlans.map((plan) => (
-                <DropdownMenuItem
-                  key={plan.id}
-                  className="flex items-center justify-between p-4"
-                  onClick={() => {
-                    // プラン変更のロジック（後で実装）
-                    console.log('Plan selected:', plan.id)
-                  }}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-medium">{plan.name}</span>
-                      {plan.id === planInfo?.planId && (
-                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                          現在のプラン
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {plan.description}
-                    </p>
-                    <div className="flex items-center space-x-4 mt-2">
-                      {plan.priceMonthly && (
-                        <span className="text-sm font-medium">
-                          ¥{parseFloat(plan.priceMonthly).toLocaleString()}/月
-                        </span>
-                      )}
-                      {plan.features.find(f => f.enabled) && (
-                        <span className="text-xs text-muted-foreground">
-                          {plan.features.filter(f => f.enabled).length}個の機能
-                        </span>
-                      )}
-                    </div>
+          {!isPlatinumUser && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 px-2 justify-between hover:bg-transparent">
+                  <span className="flex items-center text-sm font-medium">
+                    {planInfo ? planInfo.displayName : 'Product Base'}
+                  </span>
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-80">
+                <DropdownMenuLabel>プランを選択</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {upgradeablePlans.length > 0 ? (
+                  upgradeablePlans.map((plan) => (
+                    <DropdownMenuItem
+                      key={plan.id}
+                      className="flex items-center justify-between p-4"
+                      onClick={() => handlePlanChange(plan.id)}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium">{plan.name}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {plan.description}
+                        </p>
+                        <div className="flex items-center space-x-4 mt-2">
+                          {plan.priceMonthly && (
+                            <span className="text-sm font-medium">
+                              ¥{parseFloat(plan.priceMonthly).toLocaleString()}/月
+                            </span>
+                          )}
+                          {plan.features.find(f => f.enabled) && (
+                            <span className="text-xs text-muted-foreground">
+                              {plan.features.filter(f => f.enabled).length}個の機能
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="ml-2">
+                        アップグレード
+                      </Button>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-muted-foreground">
+                    <p className="text-sm">利用可能なアップグレードプランはありません</p>
+                    <p className="text-xs mt-1">現在のプランが最高レベルです</p>
                   </div>
-                  {plan.id !== planInfo?.planId && (
-                    <Button size="sm" variant="outline" className="ml-2">
-                      変更
-                    </Button>
-                  )}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          
+          {/* Platinum users see only the plan name without dropdown */}
+          {isPlatinumUser && (
+            <div className="flex items-center text-sm font-medium text-muted-foreground">
+              {planInfo.displayName}
+            </div>
+          )}
         </div>
       </div>
     </header>
