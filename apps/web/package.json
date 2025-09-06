@@ -40,7 +40,7 @@
     "postcss": "^8.4.40",
     "eslint": "^8.57.0",
     "eslint-config-next": "15.0.0-canary.104",
-    "drizzle-kit": "^0.24.0",
+    "drizzle-kit": "^0.31.4",
     "tailwindcss-animate": "^1.0.7",
     "@testing-library/react": "^16.0.0",
     "@testing-library/jest-dom": "^6.4.8",
