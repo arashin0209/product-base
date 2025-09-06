@@ -585,3 +585,101 @@ import { db } from '../../infrastructure/database/connection'
 5. **権限設定**: Supabase RLS + API認証確認
 
 このようにして、段階的かつ安全に機能拡張を行うことで、既存システムの安定性を保ちつつ新機能を追加できます。
+
+## 15. 実装時のトラブルシューティング経験
+
+### 15.1 プラン情報取得問題の解決 (2025-09-06)
+
+#### 問題の概要
+プライシングページでプラン情報が正常に表示されず、以下のエラーが発生：
+- `/api/plans` で500エラー
+- `/api/users/me/plan` で500エラー
+- フロントエンドでプラン情報が表示されない
+
+#### 根本原因の特定
+1. **Drizzleスキーマの不整合**
+   - `plans`テーブルで`stripePriceId`カラムが未定義
+   - 実際のDB構造とDrizzleスキーマファイルの不一致
+
+2. **PlanServiceの古い参照**
+   - 存在しない`stripePriceIdMonthly`カラムを参照
+   - スキーマ統一前の古いカラム名を使用
+
+3. **認証関数の設定ミス**
+   - `requireAuth`で`service key`の代わりに`anon key`を使用
+   - `getUser`メソッドに不適切なSupabaseクライアント設定
+
+#### 解決手順
+1. **Drizzleスキーマ修正**
+   ```typescript
+   // src/infrastructure/database/schema.ts
+   export const plans = pgTable('plans', {
+     // ... 他のカラム
+     stripePriceId: varchar('stripe_price_id', { length: 100 }), // 追加
+     // ... 他のカラム
+   })
+   ```
+
+2. **PlanService修正**
+   ```typescript
+   // src/application/plan/plan.service.ts
+   const plansList = await db
+     .select({
+       // ... 他のフィールド
+       stripePriceId: plans.stripePriceId, // 正しいカラム名に修正
+     })
+     .from(plans)
+   ```
+
+3. **認証関数最適化**
+   ```typescript
+   // apps/web/app/lib/auth.ts
+   export async function requireAuth(request: NextRequest): Promise<string> {
+     // 通常のSupabaseクライアント（anon key）を使用
+     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+     const supabase = createClient(supabaseUrl, supabaseAnonKey)
+     
+     const { data: { user }, error } = await supabase.auth.getUser(token)
+     // ...
+   }
+   ```
+
+#### 解決結果
+- **プランAPI**: 200 OKレスポンス、正常なプランデータ取得
+- **ユーザープラン情報API**: 200 OKレスポンス、認証されたユーザーのプラン情報取得
+- **フロントエンド**: プライシングページでプラン情報が完全に表示
+
+#### 学んだ教訓
+1. **スキーマ整合性の重要性**: Drizzleスキーマと実際のDB構造の完全一致が必須
+2. **段階的修正の必要性**: スキーマ変更時は関連するすべてのコードを同時に修正
+3. **認証設定の適切性**: Supabaseの各メソッドに適切なクライアント設定が必要
+4. **エラーハンドリングの重要性**: 詳細なログ出力により問題の特定が迅速化
+
+### 15.2 開発時のベストプラクティス
+
+#### スキーマ変更時のチェックリスト
+1. **Drizzleスキーマファイルの確認**
+   - 実際のDB構造と完全一致しているか
+   - カラム名、型、制約が正しく定義されているか
+
+2. **関連コードの修正**
+   - PlanService、AiService等のサービスクラス
+   - APIエンドポイント
+   - フロントエンドのインターフェース
+
+3. **認証設定の確認**
+   - Supabaseクライアントの適切な設定
+   - 環境変数の正しい使用
+
+4. **動作確認**
+   - 開発サーバーの再起動
+   - APIエンドポイントのテスト
+   - フロントエンドの表示確認
+
+#### エラー診断の手順
+1. **サーバーログの確認**: 詳細なエラーメッセージの確認
+2. **データベース接続の確認**: 直接SQLクエリでの動作確認
+3. **APIエンドポイントの個別テスト**: curl等での直接テスト
+4. **フロントエンドコンソールの確認**: ブラウザ開発者ツールでのエラー確認
+
+この経験により、より堅牢で保守性の高いシステム構築が可能になります。

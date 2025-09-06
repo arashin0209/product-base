@@ -3,9 +3,9 @@
   "private": true,
   "packageManager": "pnpm@9.6.0",
   "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
-    "lint": "turbo lint",
+    "dev": "pnpm --filter @product-base/web dev",
+    "build": "pnpm --filter @product-base/web build",
+    "lint": "pnpm --filter @product-base/web lint",
     "format": "prettier -w .",
     "test": "vitest",
     "test:run": "vitest run",
