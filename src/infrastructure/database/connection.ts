@@ -66,11 +66,18 @@ if (connectionString.includes('[YOUR_DB_PASSWORD]') || connectionString.includes
     delete: () => ({ from: () => ({ where: () => [] }) }),
   }
 } else {
-  client = postgres(connectionString, { 
-    ssl: { rejectUnauthorized: false },
-    prepare: false 
-  })
-  db = drizzle(client, { schema })
+  try {
+    console.log('Attempting to connect to database...')
+    client = postgres(connectionString, { 
+      ssl: { rejectUnauthorized: false },
+      prepare: false 
+    })
+    db = drizzle(client, { schema })
+    console.log('Database connection established successfully')
+  } catch (error) {
+    console.error('Database connection failed:', error)
+    throw error
+  }
 }
 
 export { db }
