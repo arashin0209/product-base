@@ -39,7 +39,7 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.40",
     "eslint": "^8.57.0",
-    "eslint-config-next": "15.0.0-canary.104",
+    "eslint-config-next": "15.5.2",
     "drizzle-kit": "^0.24.0",
     "tailwindcss-animate": "^1.0.7",
     "@testing-library/react": "^16.0.0",
